@@ -1,22 +1,5 @@
-#[config (|
-  registries = [
-    (|
-      name = `default`,
-      remote =
-        Git(|
-          url = `https://github.com/SATySFi/default-registry`,
-          branch = `format-1`,
-        |)
-    |)
-  ],
-  dependencies = [
-    (| name = `stdlib`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `math`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `std-ja`, registry = `default`, requirement = `^0.0.1` |),
-  ],
-|)]
 use package open Stdlib
-use package open Stdlib.Pervasives
+use package open Stdlib.Logo
 use package open StdJa
 use package open Math
 use open LocalMath of `local-math`
@@ -25,7 +8,7 @@ document (|
   title = {\SATySFi;言語仕様},
   author = {Takashi SUWA},
 |) '<
-  +section {構文} <
+  +section{構文}<
     +p{
       \SATySFi;の構文は以下のように定義されている：
     }

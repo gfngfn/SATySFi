@@ -1,6 +1,7 @@
 (* -unused-value-declaration *)
 [@@@ocaml.warning "-32"]
 
+open MyUtil
 open LengthInterface
 open GraphicBase
 open SyntaxBase
@@ -21,6 +22,12 @@ let make_entry (v : syntactic_value) : stack_entry =
 
 let report_dynamic_error msg =
   raise (ExecError(msg))
+
+
+let validate_as_abs_path (s : string) : abs_path =
+  match AbsPath.of_string s with
+  | None          -> report_dynamic_error (Printf.sprintf "not an absolute path: \"%s\"" s)
+  | Some(abspath) -> abspath
 
 (*
 type compiled_nom_inline_text_element =

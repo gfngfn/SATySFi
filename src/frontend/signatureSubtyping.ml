@@ -102,7 +102,7 @@ and substitute_concrete (subst : substitution) (modsig : signature) : signature 
           opaques = quant;
           domain  = modsig1;
           codomain = absmodsig2;
-          _
+          closure;
         } = fsig
       in
       let modsig1 = modsig1 |> substitute_concrete subst in
@@ -112,7 +112,7 @@ and substitute_concrete (subst : substitution) (modsig : signature) : signature 
           opaques  = quant;
           domain   = modsig1;
           codomain = absmodsig2;
-          closure  = failwith "TODO: substitute_concrete, closure";
+          closure  = Option.map (substitute_closure subst) closure;
         }
       in
       ConcFunctor(fsig)
@@ -121,6 +121,24 @@ and substitute_concrete (subst : substitution) (modsig : signature) : signature 
   | ConcStructure(ssig) ->
       let ssig = ssig |> substitute_struct subst in
       ConcStructure(ssig)
+
+
+(* This might be heavy. TODO: remove this by adopting Bochao–Ohori style static interpretation *)
+and substitute_closure (subst : substitution) ((modident, utmod, tyenv0) : functor_closure) : functor_closure =
+  let tyenv0 =
+    tyenv0 |> Typeenv.map
+      ~v:(fun _x ventry -> { ventry with val_type = ventry.val_type |> substitute_poly_type subst })
+      ~a:(fun _a macentry -> { macentry with macro_type = macentry.macro_type |> substitute_macro_type subst })
+      ~c:(fun _c centry -> { centry with ctor_parameter = centry.ctor_parameter |> substitute_type_scheme subst })
+      ~t:(fun _t tentry -> { tentry with type_scheme = tentry.type_scheme |> substitute_type_scheme subst })
+      ~m:(fun _m mentry -> { mod_signature = mentry.mod_signature |> substitute_concrete subst })
+      ~s:(fun _s absmodsig -> absmodsig |> substitute_abstract subst)
+  in
+  (modident, utmod, tyenv0)
+
+
+and substitute_type_scheme (subst : substitution) ((typarams, pty) : type_scheme) : type_scheme =
+  (typarams, pty |> substitute_poly_type subst)
 
 
 and substitute_poly_type (subst : substitution) (Poly(pty) : poly_type) : poly_type =

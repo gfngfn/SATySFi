@@ -132,7 +132,7 @@ let read_assoc (assoc : MYU.assoc) : t =
 
 
 let main (abspath : abs_path) : t =
-  let pathstr = get_abs_path_string abspath in
+  let pathstr = AbsPath.to_string abspath in
   try
     let json = YS.from_file ~fname:pathstr pathstr in
       (* -- may raise 'Sys_error'  -- *)

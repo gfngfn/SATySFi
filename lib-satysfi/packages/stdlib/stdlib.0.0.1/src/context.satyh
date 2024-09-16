@@ -1,0 +1,85 @@
+module Context :> sig
+  val initial : length -> inline [math-text] -> context
+  val set-math-command : inline [math-text] -> context -> context
+  val set-code-text-command : inline [string] -> context -> context
+  val set-hyphenation-dictionary : hyphenation -> context -> context
+  val set-unicode-char-database : unicode-char-database -> context -> context
+  val set-hyphen-min : int -> int -> context -> context
+  val set-min-gap-of-lines : length -> context -> context
+  val set-space-ratio : float -> float -> float -> context -> context
+  val set-adjacent-stretch-ratio : float -> context -> context
+  val get-math-axis-height-ratio : context -> float
+  val set-paragraph-margin : length -> length -> context -> context
+  val set-min-paragraph-ascender-and-descender : length -> length -> context -> context
+  val set-font-size : length -> context -> context
+  val get-font-size : context -> length
+  val set-text-color : color -> context -> context
+  val get-text-color : context -> color
+  val set-leading : length -> context -> context
+  val get-text-width : context -> length
+  val set-manual-rising : length -> context -> context
+  val set-hyphen-penalty : int -> context -> context
+  val set-math-variant-char : int -> (math-char-class -> int) -> context -> context
+  val set-math-char : int -> int -> math-class -> context -> context
+  val set-math-char-class : math-char-class -> context -> context
+  val get-math-char-class : context -> math-char-class
+  val set-word-break-penalty : int -> context -> context
+  val set-every-word-break : inline-boxes -> inline-boxes -> context -> context
+  val get-every-word-break : context -> inline-boxes * inline-boxes
+end = struct
+
+  val initial = get-initial-context %PRIMITIVE
+
+  val set-math-command = set-math-command %PRIMITIVE
+
+  val set-code-text-command = set-code-text-command %PRIMITIVE
+
+  val set-hyphenation-dictionary = set-hyphenation-dictionary %PRIMITIVE
+
+  val set-unicode-char-database = set-unicode-char-database %PRIMITIVE
+
+  val set-hyphen-min = set-hyphen-min %PRIMITIVE
+
+  val set-min-gap-of-lines = set-min-gap-of-lines %PRIMITIVE
+
+  val set-space-ratio = set-space-ratio %PRIMITIVE
+
+  val set-adjacent-stretch-ratio = set-adjacent-stretch-ratio %PRIMITIVE
+
+  val get-math-axis-height-ratio = get-math-axis-height-ratio %PRIMITIVE
+
+  val set-paragraph-margin = set-paragraph-margin %PRIMITIVE
+
+  val set-min-paragraph-ascender-and-descender = set-min-paragraph-ascender-and-descender %PRIMITIVE
+
+  val set-font-size = set-font-size %PRIMITIVE
+
+  val get-font-size = get-font-size %PRIMITIVE
+
+  val set-text-color = set-text-color %PRIMITIVE
+
+  val get-text-color = get-text-color %PRIMITIVE
+
+  val set-leading = set-leading %PRIMITIVE
+
+  val get-text-width = get-text-width %PRIMITIVE
+
+  val set-manual-rising = set-manual-rising %PRIMITIVE
+
+  val set-hyphen-penalty = set-hyphen-penalty %PRIMITIVE
+
+  val set-math-variant-char = set-math-variant-char %PRIMITIVE
+
+  val set-math-char = set-math-char %PRIMITIVE
+
+  val set-math-char-class = set-math-char-class %PRIMITIVE
+
+  val get-math-char-class = get-math-char-class %PRIMITIVE
+
+  val set-word-break-penalty = set-word-break-penalty %PRIMITIVE
+
+  val set-every-word-break = set-every-word-break %PRIMITIVE
+
+  val get-every-word-break = get-every-word-break %PRIMITIVE
+
+end

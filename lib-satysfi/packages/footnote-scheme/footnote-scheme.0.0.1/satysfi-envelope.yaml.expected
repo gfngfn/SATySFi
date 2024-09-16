@@ -1,0 +1,5 @@
+library:
+  main_module: FootnoteScheme
+  source_directories:
+  - ./src
+  test_directories: []

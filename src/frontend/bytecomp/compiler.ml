@@ -138,7 +138,7 @@ and compile_code_pattern_branch (irpatbr : ir_pattern_branch) : (instruction lis
       IRPatternBranchWhen(irpat, compiled, compiled1)
 
 
-and compile_code_letrec_binding (IRLetRecBinding(var, irpatbr) : ir_letrec_binding) : (instruction list) ir_letrec_binding_scheme =
+and compile_code_let_rec_binding (IRLetRecBinding(var, irpatbr) : ir_let_rec_binding) : (instruction list) ir_let_rec_binding_scheme =
   let comppatbr = compile_code_pattern_branch irpatbr in
   IRLetRecBinding(var, comppatbr)
 
@@ -274,7 +274,7 @@ and compile (ir : ir) (cont : instruction list) =
 
   | IRCodeLetRecIn(irrecbinds, ir2) ->
       let instrs2 = compile ir2 [] in
-      OpCodeLetRec(List.map compile_code_letrec_binding irrecbinds, instrs2) :: cont
+      OpCodeLetRec(List.map compile_code_let_rec_binding irrecbinds, instrs2) :: cont
 
   | IRCodeLetNonRecIn(irpat, ir1, ir2) ->
       let instrs1 = compile ir1 [] in

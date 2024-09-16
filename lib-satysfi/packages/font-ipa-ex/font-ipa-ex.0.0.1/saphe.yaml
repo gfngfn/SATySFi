@@ -1,0 +1,24 @@
+saphe: "^0.1.0-alpha.1"
+satysfi: "^0.1.0-alpha.1"
+name: "font-ipa-ex"
+authors: []
+external_resources:
+  - name: "IPAexfont00401"
+    zip:
+      url: "https://moji.or.jp/wp-content/ipafont/IPAexfont/IPAexfont00401.zip"
+      checksum: "57f2631833c1049ea89320971cc74ce5"
+      extractions:
+        - from: "IPAexfont00401/ipaexg.ttf"
+          to: "./fonts/ipaexg.ttf"
+        - from: "IPAexfont00401/ipaexm.ttf"
+          to: "./fonts/ipaexm.ttf"
+contents:
+  font:
+    main_module: "FontIpaEx"
+    files:
+      - path: "./fonts/ipaexm.ttf"
+        opentype_single:
+          name: "mincho"
+      - path: "./fonts/ipaexg.ttf"
+        opentype_single:
+          name: "gothic"

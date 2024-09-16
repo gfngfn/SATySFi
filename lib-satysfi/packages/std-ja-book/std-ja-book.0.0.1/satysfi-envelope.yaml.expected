@@ -1,0 +1,5 @@
+library:
+  main_module: StdJaBook
+  source_directories:
+  - ./src
+  test_directories: []

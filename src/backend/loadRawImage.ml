@@ -33,7 +33,7 @@ let make_smask pdfmain widdots hgtdots alpha_bytes =
 
 let make_xobject (pdfmain : Pdf.t) (colorspace : Pdf.pdfobject) widdots hgtdots abs_path =
   let img =
-    try Images.load (get_abs_path_string abs_path) []
+    try Images.load (AbsPath.to_string abs_path) []
     with
     | Failure message -> cannot_load_image message abs_path
   in

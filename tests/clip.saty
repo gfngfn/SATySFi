@@ -1,27 +1,6 @@
-#[config (|
-  registries = [
-    (|
-      name = `default`,
-      remote =
-        Git(|
-          url = `https://github.com/SATySFi/default-registry`,
-          branch = `format-1`,
-        |)
-    |)
-  ],
-  dependencies = [
-    (| name = `stdlib`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `math`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `font-junicode`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `font-ipa-ex`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `font-latin-modern`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `font-latin-modern-math`, registry = `default`, requirement = `^0.0.1` |),
-  ],
-|)]
 use package open Stdlib
+use package open Stdlib.Logo
 use open Head of `head`
-
-let open Pervasives in
 
 let inline ctx \do-fill wid f =
   let ib = use-image-by-width (load-image `images/peppers-rgb.jpg`) wid in

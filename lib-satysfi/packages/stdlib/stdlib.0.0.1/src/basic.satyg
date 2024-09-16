@@ -1,0 +1,18 @@
+module Basic = struct
+
+  type ordering = Less | Equal | Greater
+
+  type vector = length * length
+
+  type point = length * length
+
+  type paren = length -> length -> context -> inline-boxes * (length -> length)
+
+  type paddings = length * length * length * length
+
+  signature Ord = sig
+    type t :: o
+    val compare : t -> t -> ordering
+  end
+
+end

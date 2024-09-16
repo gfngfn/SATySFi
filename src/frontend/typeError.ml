@@ -1,4 +1,5 @@
 
+open MyUtil
 open Types
 open StaticEnv
 open SyntaxBase
@@ -66,4 +67,6 @@ type type_error =
   | CyclicSynonymTypeDefinition          of (type_name * SynonymDependencyGraph.data) cycle
   | MultipleSynonymTypeDefinition        of type_name * Range.t * Range.t
   | ValueAttributeError                  of ValueAttribute.error
+  | ModuleAttributeError                 of ModuleAttribute.error
   | TestMustBeStage1NonRec               of Range.t
+  | TestMustBeUnitToUnit                 of Range.t * poly_type

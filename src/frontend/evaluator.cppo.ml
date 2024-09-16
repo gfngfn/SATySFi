@@ -1,4 +1,5 @@
 
+open MyUtil
 open LengthInterface
 open GraphicBase
 open SyntaxBase
@@ -10,6 +11,12 @@ exception EvalError of string
 
 let report_dynamic_error msg =
   raise (EvalError(msg))
+
+
+let validate_as_abs_path (s : string) : abs_path =
+  match AbsPath.of_string s with
+  | None          -> report_dynamic_error (Printf.sprintf "not an absolute path: \"%s\"" s)
+  | Some(abspath) -> abspath
 
 
 type normalized_inline_text_element =
@@ -281,7 +288,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
       end
 
   | LetRecIn(recbinds, ast2) ->
-      let env = add_letrec_bindings_to_environment env recbinds in
+      let env = add_let_rec_bindings_to_environment env recbinds in
       interpret_0 env ast2
 
   | LetNonRecIn(pat, ast1, ast2) ->
@@ -438,7 +445,7 @@ and interpret_0 (env : environment) (ast : abstract_tree) : syntactic_value =
   | CatchTest{ test_name; test_impl = ast } ->
       let res =
         try
-          let value = interpret_0 env ast in
+          let value = interpret_0 env (Apply(LabelMap.empty, ast, ASTBaseConstant(BCUnit))) in
           Ok(value)
         with
         | EvalError(msg) -> (* Catches aborts during tests. *)
@@ -525,7 +532,7 @@ and interpret_1 (env : environment) (ast : abstract_tree) : code_value =
       end
 
   | LetRecIn(recbinds, ast2) ->
-      let (env, cdrecbinds) = interpret_letrec_bindings_1 env recbinds in
+      let (env, cdrecbinds) = interpret_let_rec_bindings_1 env recbinds in
       let code2 = interpret_1 env ast2 in
       CdLetRecIn(cdrecbinds, code2)
 
@@ -1187,7 +1194,7 @@ and check_pattern_matching (env : environment) (pat : pattern_tree) (value_obj :
       None
 
 
-and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_binding list) : environment =
+and add_let_rec_bindings_to_environment (env : environment) (recbinds : let_rec_binding list) : environment =
   let tris =
     recbinds |> List.map (function LetRecBinding(evid, patbr) ->
       let loc = ref Nil in
@@ -1205,7 +1212,7 @@ and add_letrec_bindings_to_environment (env : environment) (recbinds : letrec_bi
   env
 
 
-and interpret_letrec_bindings_1 (env : environment) (recbinds : letrec_binding list) : environment * code_letrec_binding list =
+and interpret_let_rec_bindings_1 (env : environment) (recbinds : let_rec_binding list) : environment * code_let_rec_binding list =
   (* Generate the symbols for the identifiers and add them to the environment: *)
   let (env, zippedacc) =
     recbinds |> List.fold_left (fun (env, zippedacc) recbind ->
@@ -1238,7 +1245,7 @@ let interpret_bindings_0 ~(run_tests : bool) (env : environment) (binds : bindin
                       add_to_environment env evid (ref value)
 
                   | Rec(recbinds) ->
-                      add_letrec_bindings_to_environment env recbinds
+                      add_let_rec_bindings_to_environment env recbinds
 
                   | Mutable(evid, ast_ini) ->
                       let value_ini = interpret_0 env ast_ini in
@@ -1256,7 +1263,7 @@ let interpret_bindings_0 ~(run_tests : bool) (env : environment) (binds : bindin
                       (env, CdNonRec(symb, code))
 
                   | Rec(recbinds) ->
-                      let (env, cdrecbinds) = interpret_letrec_bindings_1 env recbinds in
+                      let (env, cdrecbinds) = interpret_let_rec_bindings_1 env recbinds in
                       (env, CdRec(cdrecbinds))
 
                   | Mutable(evid, ast) ->

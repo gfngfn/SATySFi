@@ -1,6 +1,6 @@
 
 open MyUtil
-open PackageSystemBase
+open EnvelopeSystemBase
 open Types
 
 
@@ -12,30 +12,42 @@ type yaml_error =
   | NotABool               of YamlDecoder.context
   | NotAnArray             of YamlDecoder.context
   | NotAnObject            of YamlDecoder.context
-  | UnexpectedTag          of YamlDecoder.context * string
-  | UnexpectedLanguage     of string
-  | NotASemanticVersion    of YamlDecoder.context * string
-  | NotAVersionRequirement of YamlDecoder.context * string
-  | InvalidPackageName     of YamlDecoder.context * string
-  | MultiplePackageDefinition of {
-      context      : YamlDecoder.context;
-      package_name : string;
+  | BranchNotFound of {
+      context       : YamlDecoder.context;
+      expected_tags : string list;
+      got_tags      : string list;
     }
-  | DuplicateRegistryLocalName of {
-      context             : YamlDecoder.context;
-      registry_local_name : registry_local_name;
+  | MoreThanOneBranchFound of {
+      context       : YamlDecoder.context;
+      expected_tags : string list;
+      got_tags      : string list;
     }
-  | DuplicateRegistryHashValue of {
-      context             : YamlDecoder.context;
-      registry_hash_value : registry_hash_value;
+  | NotAnUppercasedIdentifier of {
+      context : YamlDecoder.context;
+      got     : string;
     }
-  | CannotBeUsedAsAName of YamlDecoder.context * string
-  | UnsupportedConfigFormat of string
+  | NotALowercasedIdentifier of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
   | NotACommand of {
       context : YamlDecoder.context;
-      prefix  : char;
-      string  : string;
+      prefix  : string;
+      got     : string;
     }
+  | NotAChainedIdentifier of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
+  | NotAnAbsolutePath of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
+  | NotARelativePath of {
+      context : YamlDecoder.context;
+      got     : string;
+    }
+[@@deriving show { with_path = false }]
 
 module YamlError = struct
   type t = yaml_error
@@ -46,9 +58,14 @@ module YamlError = struct
   let not_a_bool context = NotABool(context)
   let not_an_array context = NotAnArray(context)
   let not_an_object context = NotAnObject(context)
+  let branch_not_found context expected_tags got_tags =
+    BranchNotFound{ context; expected_tags; got_tags }
+  let more_than_one_branch_found context expected_tags got_tags =
+    MoreThanOneBranchFound{ context; expected_tags; got_tags }
 end
 
 type config_error =
+  | UnexpectedExtension             of string
   | CyclicFileDependency            of (abs_path * untyped_library_file) cycle
   | CannotReadFileOwingToSystem     of string
   | LibraryContainsWholeReturnValue of abs_path
@@ -60,78 +77,39 @@ type config_error =
       expected : module_name;
       got      : module_name;
     }
-  | PackageDirectoryNotFound  of string list
-  | PackageConfigNotFound     of abs_path
-  | PackageConfigError        of abs_path * yaml_error
-  | LockConfigNotFound        of abs_path
-  | LockConfigError           of abs_path * yaml_error
-  | RegistryConfigNotFound    of abs_path
-  | RegistryConfigNotFoundIn  of lib_path * abs_path list
-  | RegistryConfigError       of abs_path * yaml_error
-  | LibraryRootConfigNotFound of abs_path
-  | LibraryRootConfigNotFoundIn of lib_path * abs_path list
-  | LibraryRootConfigError    of abs_path * yaml_error
-  | LockNameConflict          of lock_name
-  | LockedPackageNotFound     of lib_path * abs_path list
-  | DependencyOnUnknownLock of {
-      depending : lock_name;
-      depended  : lock_name;
-    }
-  | CyclicLockDependency      of (lock_name * untyped_package) cycle
-  | NotALibraryFile           of abs_path
   | TypeError                 of TypeError.type_error
+  | NotALibraryFile           of abs_path
   | FileModuleNotFound        of Range.t * module_name
   | FileModuleNameConflict    of module_name * abs_path * abs_path
   | NotADocumentFile          of abs_path * mono_type
   | NotAStringFile            of abs_path * mono_type
   | NoMainModule              of module_name
   | UnknownPackageDependency  of Range.t * module_name
-  | CannotFindLibraryFile     of lib_path * abs_path list
+  | EnvelopeNameConflict      of envelope_name
+  | DependencyOnUnknownEnvelope of {
+      depending : envelope_name;
+      depended  : envelope_name;
+    }
+  | CyclicEnvelopeDependency of (envelope_name * untyped_envelope) cycle
   | LocalFileNotFound of {
       relative   : string;
       candidates : abs_path list;
     }
-  | CannotSolvePackageConstraints
-  | DocumentAttributeError        of DocumentAttribute.error
-  | MarkdownClassNotFound         of module_name
-  | NoMarkdownConversion          of module_name
-  | MoreThanOneMarkdownConversion of module_name
-  | MarkdownError                 of MarkdownParser.error
-  | FailedToFetchTarball of {
-      lock_name   : lock_name;
-      exit_status : int;
-      command     : string;
+  | DepsConfigNotFound        of abs_path
+  | DepsConfigError           of abs_path * yaml_error
+  | EnvelopeConfigNotFound    of abs_path
+  | EnvelopeConfigError       of abs_path * yaml_error
+  | DumpFileError             of abs_path * yaml_error
+  | CannotWriteDumpFile       of abs_path
+  | DependedEnvelopeNotFound  of envelope_name
+  | MarkdownClassNotFound
+  | NoMarkdownConversion
+  | MarkdownError             of MarkdownParser.error
+  | CannotReadDirectory of {
+      path    : abs_path;
+      message : string;
     }
-  | FailedToExtractTarball of {
-      lock_name   : lock_name;
-      exit_status : int;
-      command     : string;
+  | CannotOutputResult of {
+      path    : abs_path;
+      message : string;
     }
-  | FailedToFetchExternalZip of {
-      url         : string;
-      exit_status : int;
-      command     : string;
-    }
-  | ExternalZipChecksumMismatch of {
-      url      : string;
-      path     : abs_path;
-      expected : string;
-      got      : string;
-    }
-  | TarGzipChecksumMismatch of {
-      lock_name : lock_name;
-      url       : string;
-      path      : abs_path;
-      expected  : string;
-      got       : string;
-    }
-  | FailedToExtractExternalZip of {
-      exit_status : int;
-      command     : string;
-    }
-  | FailedToCopyFile of {
-      exit_status : int;
-      command     : string;
-    }
-  | PackageRegistryFetcherError   of PackageRegistryFetcher.error
-  | CanonicalRegistryUrlError     of CanonicalRegistryUrl.error

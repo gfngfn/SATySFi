@@ -1,0 +1,12 @@
+module Local = struct
+
+  val persistent ~rec fold 'a 'b (f : 'a -> 'b -> 'a) (acc : 'a) (ys : list 'b) : 'a =
+    match ys with
+    | []      -> acc
+    | x :: xs -> fold f (f acc x) xs
+    end
+
+  val inline \show-int (n : int) =
+    embed-string (arabic n)
+
+end

@@ -1,25 +1,127 @@
-module Testing = struct
+module Testing :> sig
+  module Equality : sig
+    type t :: o -> o
+    val make 'a : (|
+      equal : 'a -> 'a -> bool,
+      show : 'a -> string,
+    |) -> t 'a
+    val get 'a : t 'a -> (|
+      equal : 'a -> 'a -> bool,
+      show : 'a -> string,
+    |)
+    val from-show 'a : ('a -> string) -> t 'a
+    val bool : t bool
+    val int : t int
+    val string : t string
+    val option 'a : t 'a -> t (option 'a)
+    val list 'a : t 'a -> t (list 'a)
+    val pair 'a 'b : t 'a -> t 'b -> t ('a * 'b)
+  end
+  val assert 'a : ?(title : string) bool -> unit
+  val assert-equal 'a : ?(title : string) Equality.t 'a -> 'a -> 'a -> unit
+end = struct
 
   module Equality = struct
 
-    signature TargetType = sig
-      type t :: o
-      val equal : t -> t -> bool
-      val show : t -> string
-    end
+    type t 'a = (|
+      equal : 'a -> 'a -> bool,
+      show : 'a -> string,
+    |)
 
-    module Make = fun(Target : TargetType) -> struct
+    val make r = r
 
-      val assert-equal (x1 : Target.t) (x2 : Target.t) =
-        if Target.equal x1 x2 then
-          ()
-        else
-          let s1 = Target.show x1 in
-          let s2 = Target.show x2 in
-          abort-with-message (`expected: `# ^ s1 ^ `, got: `# ^ s2)
+    val get r = r
 
-    end
+    val from-show show =
+      let equal x1 x2 = string-same (show x1) (show x2) in
+      (| equal = equal, show = show |)
+
+    val bool =
+      let equal b1 b2 =
+        match (b1, b2) with
+        | (true, true)   -> true
+        | (false, false) -> true
+        | _              -> false
+        end
+      in
+      let show b = if b then `true` else `false` in
+      make (| equal = equal, show = show |)
+
+    val int =
+      make (| equal = (==), show = arabic |)
+
+    val string =
+      make (| equal = string-same, show = (fun s -> s) |)
+
+    val option elem =
+      let elem-equal = elem#equal in
+      let elem-show = elem#show in
+      % Re-implements `Option.equal`
+      % because `Testing` cannot depend on `Stdlib` owing to the converse dependency.
+      let equal opt1 opt2 =
+        match (opt1, opt2) with
+        | (None, None)         -> true
+        | (Some(x1), Some(x2)) -> elem-equal x1 x2
+        | _                    -> false
+        end
+      in
+      let show opt =
+        match opt with
+        | None    -> `None`
+        | Some(x) -> `Some(` ^ elem-show x ^ `)`
+        end
+      in
+      (| equal = equal, show = show |)
+
+    val list elem =
+      let elem-equal = elem#equal in
+      let elem-show = elem#show in
+      % Re-implements `List.equal` and `List.show`
+      % because `Testing` cannot depend on `Stdlib` owing to the converse dependency.
+      let rec equal xs1 xs2 =
+        match (xs1, xs2) with
+        | ([], [])               -> true
+        | (x1 :: ys1, x2 :: ys2) -> if elem-equal x1 x2 then equal ys1 ys2 else false
+        | _                      -> false
+        end
+      in
+      let rec show-aux xs =
+        match xs with
+        | []      -> ` `
+        | [x]     -> elem-show x
+        | x :: ys -> elem-show x ^ `, `# ^ show-aux ys
+        end
+      in
+      let show xs = `[` ^ show-aux xs ^ `]` in
+      (| equal = equal, show = show |)
+
+    val pair elem-x elem-y =
+      let equal (x1, y1) (x2, y2) = elem-x#equal x1 x2 && elem-y#equal y1 y2 in
+      let show (x, y) = `(` ^ elem-x#show x ^ `, `# ^ elem-y#show y ^ `)` in
+      (| equal = equal, show = show |)
 
   end
+
+  val make-title-prefix title-opt =
+    match title-opt with
+    | None        -> ` `
+    | Some(title) -> `[` ^ title ^ `] `#
+    end
+
+  val assert ?(title = title-opt) b =
+    if b then
+      ()
+    else
+      let s-title = make-title-prefix title-opt in
+      abort-with-message (s-title ^ `assertion failed`)
+
+  val assert-equal ?(title = title-opt) eq x1 x2 =
+    if eq#equal x1 x2 then
+      ()
+    else
+      let s1 = eq#show x1 in
+      let s2 = eq#show x2 in
+      let s-title = make-title-prefix title-opt in
+      abort-with-message (s-title ^ `expected: `# ^ s1 ^ `, got: `# ^ s2)
 
 end

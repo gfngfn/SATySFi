@@ -1,0 +1,97 @@
+saphe: "^0.1.0-alpha.1"
+satysfi: "^0.1.0-alpha.1"
+name: "md-ja"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+  - "hikalium <@hikalium>"
+registries:
+  - name: "default"
+    git:
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "temp-dev-saphe"
+contents:
+  library:
+    main_module: "MDJa"
+    source_directories:
+      - "./src"
+    markdown_conversion:
+      document: "MDJa.document"
+      paragraph: "+MDJa.p"
+      hr: "+MDJa.hr"
+      h1: "+MDJa.h1"
+      h2: "+MDJa.h2"
+      h3: "+MDJa.h3"
+      h4: "+MDJa.h4"
+      h5: "+MDJa.h5"
+      h6: "+MDJa.h6"
+      ul: "+MDJa.ul-block"
+      ol: "+MDJa.ol-block"
+      code_block: "+MDJa.code"
+      blockquote: "+MDJa.quote"
+      emph: "\\MDJa.emph"
+      strong: "\\MDJa.string"
+      hard_break: null
+      code: "\\MDJa.code"
+      link: "\\MDJa.link"
+      img: "\\MDJa.img"
+dependencies:
+  - used_as: "Stdlib"
+    registered:
+      registry: "default"
+      name: "stdlib"
+      requirement: "^0.0.1"
+  - used_as: "Math"
+    registered:
+      registry: "default"
+      name: "math"
+      requirement: "^0.0.1"
+  - used_as: "Annot"
+    registered:
+      registry: "default"
+      name: "annot"
+      requirement: "^0.0.1"
+  - used_as: "Code"
+    registered:
+      registry: "default"
+      name: "code"
+      requirement: "^0.0.1"
+  - used_as: "FootnoteScheme"
+    registered:
+      registry: "default"
+      name: "footnote-scheme"
+      requirement: "^0.0.1"
+  - used_as: "Itemize"
+    registered:
+      registry: "default"
+      name: "itemize"
+      requirement: "^0.0.1"
+  - used_as: "FontJunicode"
+    registered:
+      registry: "default"
+      name: "font-junicode"
+      requirement: "^0.0.1"
+  - used_as: "FontLatinModern"
+    registered:
+      registry: "default"
+      name: "font-latin-modern"
+      requirement: "^0.0.1"
+  - used_as: "FontIpaEx"
+    registered:
+      registry: "default"
+      name: "font-ipa-ex"
+      requirement: "^0.0.1"
+  - used_as: "FontLatinModernMath"
+    registered:
+      registry: "default"
+      name: "font-latin-modern-math"
+      requirement: "^0.0.1"
+  - used_as: "HyphEnglish"
+    registered:
+      registry: "default"
+      name: "hyph-english"
+      requirement: "^0.0.1"
+  - used_as: "Unidata"
+    registered:
+      registry: "default"
+      name: "unidata"
+      requirement: "^0.0.1"

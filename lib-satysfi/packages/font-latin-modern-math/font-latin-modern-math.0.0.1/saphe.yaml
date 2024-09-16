@@ -1,0 +1,20 @@
+saphe: "^0.1.0-alpha.1"
+satysfi: "^0.1.0-alpha.1"
+name: "font-latin-modern-math"
+authors: []
+external_resources:
+  - name: "latinmodern-math-1959"
+    zip:
+      url: "https://www.gust.org.pl/projects/e-foundry/lm-math/download/latinmodern-math-1959.zip"
+      checksum: "bc82f6d4184ec0ea3ba2c0798e6be719"
+      extractions:
+        - from: "latinmodern-math-1959/otf/latinmodern-math.otf"
+          to: "./fonts/latinmodern-math.otf"
+contents:
+  font:
+    main_module: "FontLatinModernMath"
+    files:
+      - path: "./fonts/latinmodern-math.otf"
+        opentype_single:
+          name: "main"
+          math: true

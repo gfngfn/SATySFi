@@ -11,10 +11,6 @@ end = struct
     embed-inline-to-math MathOrd (inline-skip len)
 
 
-  val length-max len1 len2 =
-    if len1 <' len2 then len2 else len1
-
-
   val derive ctx nameopt bopt widopt (mlst1 : list math-text) (m2 : math-text) =
     let ib-space =
       match widopt with
@@ -24,7 +20,7 @@ end = struct
     in
     embed-inline-to-math MathInner (
       let ibacc1 =
-        (mlst1 |> List.fold-left-adjacent (fun ibacc1 m prevopt _ -> (
+        (mlst1 |> List.fold-adjacent (fun ibacc1 m prevopt _ -> (
           let ibm = embed-math ctx (read-math ctx m) in
           match prevopt with
           | None    -> inline-fil ++ ibm
@@ -41,8 +37,8 @@ end = struct
       let ib2 = inline-fil ++ (embed-math ctx (read-math ctx m2)) ++ inline-fil in
       let w =
         match widopt with
-        | None      -> length-max (Pervasives.get-natural-width ib1) (Pervasives.get-natural-width ib2)
-        | Some(wid) -> length-max wid (Pervasives.get-natural-width ib2)
+        | None      -> Length.max (Inline.get-natural-advance ib1) (Inline.get-natural-advance ib2)
+        | Some(wid) -> Length.max wid (Inline.get-natural-advance ib2)
         end
       in
       let color = get-text-color ctx in
@@ -63,14 +59,14 @@ end = struct
               | Some(true)  -> 0pt
               end
             in
-            ((fun pt -> [Gr.text-rightward pt ib]), wname)
+            ((fun pt -> [Graphics.text-rightward pt ib]), wname)
         end
       in
       let axis-height = get-font-size ctx *' get-math-axis-height-ratio ctx in
       let bar =
           inline-graphics w (thickness +' gap) gap (fun (x, y) -> (
             let grs =
-              fill color (Gr.rectangle (x, y) (x +' w, y +' thickness))
+              fill color (Path.rectangle (x, y) (x +' w, y +' thickness))
                 :: (glnamef (x +' w, y -' axis-height))
             in
             unite-graphics grs

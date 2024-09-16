@@ -251,14 +251,16 @@ let can_break_before tail =
 
 
 let is_whitespace_character (uch : Uchar.t) : bool =
-  match LineBreakDataMap.find uch with
-  | SP | INBR -> true
-  | _         -> false
-     (* --
-        needs re-consideration:
-        it may be better to use the criterion of whether
-        the general category of the given character is `Zs` or not.
-        -- *)
+  match Uchar.to_int uch with
+  | 0x000A
+  | 0x000B
+  | 0x000C
+  | 0x000D
+  | 0x0020
+  | 0x0085 -> true
+  | _      -> false
+     (* TODO: re-consider this; it may be better to use the criterion of whether
+        the general category of the given character is `Zs` or not. *)
 
 
 let rec omit_space_uchars (uchlst : Uchar.t list) : Uchar.t list =
