@@ -20,6 +20,7 @@ DOC_TARGETS = \
 	staged1.pdf \
 	macro1.pdf \
 	rename-dep1.pdf \
+	type-annot.pdf \
 	$(INIT_DOC_DIR)/$(INIT_DOC_BASE).pdf \
 	$(INIT_MD_DIR)/$(INIT_MD_BASE).pdf \
 	$(LOCAL_FIXED_DIR)/$(LOCAL_FIXED_BASE).pdf \
