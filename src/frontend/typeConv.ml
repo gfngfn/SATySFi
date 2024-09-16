@@ -216,7 +216,7 @@ let instantiate_macro_type (lev : level) (qtfbl : quantifiability) (pmacty : pol
   | BlockMacroType(pmacparamtys)  -> BlockMacroType(pmacparamtys |> List.map aux)
 
 
-let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : FreeRowID.t -> LabelSet.t -> BoundRowID.t option) (must_be_bound : MustBeBoundID.t -> bool) (ty : mono_type) : poly_type_body =
+let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : FreeRowID.t -> LabelSet.t -> BoundRowID.t option) (must_be_bound : MustBeBoundID.t -> bool) (must_be_bound_row : MustBeBoundRowID.t -> bool) (ty : mono_type) : poly_type_body =
   let rec iter ((rng, tymain) : mono_type) =
     match tymain with
     | TypeVariable(tv) ->
@@ -248,9 +248,9 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : F
               (rng, TypeVariable(ptvi))
         end
 
-    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(generalize_row LabelSet.empty optrow, iter tydom, iter tycod))
+    | FuncType(optrow, tydom, tycod)    -> (rng, FuncType(iter_row LabelSet.empty optrow, iter tydom, iter tycod))
     | ProductType(tys)                  -> (rng, ProductType(TupleList.map iter tys))
-    | RecordType(row)                   -> (rng, RecordType(generalize_row LabelSet.empty row))
+    | RecordType(row)                   -> (rng, RecordType(iter_row LabelSet.empty row))
     | DataType(tyargs, tyid)            -> (rng, DataType(List.map iter tyargs, tyid))
     | ListType(tysub)                   -> (rng, ListType(iter tysub))
     | RefType(tysub)                    -> (rng, RefType(iter tysub))
@@ -260,13 +260,13 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : F
     | MathCommandType(tys)              -> (rng, MathCommandType(List.map (lift_argument_type iter) tys))
     | CodeType(tysub)                   -> (rng, CodeType(iter tysub))
 
-  and generalize_row (labset : LabelSet.t) = function
+  and iter_row (labset : LabelSet.t) = function
     | RowEmpty ->
         RowEmpty
 
     | RowCons(rlabel, ty, tail) ->
         let (_, label) = rlabel in
-        RowCons(rlabel, iter ty, generalize_row (labset |> LabelSet.add label) tail)
+        RowCons(rlabel, iter ty, iter_row (labset |> LabelSet.add label) tail)
 
     | RowVar(UpdatableRow(orviref) as rv0) ->
         begin
@@ -282,12 +282,19 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : F
               end
 
           | MonoRowLink(row) ->
-              generalize_row labset row
+              iter_row labset row
         end
 
-    | RowVar(MustBeBoundRow(mbbrid)) ->
-        let brid = MustBeBoundRowID.to_bound_id mbbrid in
-        RowVar(PolyRowBound(brid))
+    | RowVar(MustBeBoundRow(mbbrid) as rv0) ->
+        let prvi =
+          if must_be_bound_row mbbrid then
+            let brid = MustBeBoundRowID.to_bound_id mbbrid in
+            PolyRowBound(brid)
+          else
+            PolyRowFree(rv0)
+        in
+        RowVar(prvi)
+
   in
   iter ty
 
@@ -332,13 +339,15 @@ let generalize (lev : level) (ty : mono_type) : poly_type =
   let intern_ty = make_type_generalization_intern lev tvid_ht in
   let intern_row = make_row_generalization_intern lev rvid_ht in
   let must_be_bound (mbbid : MustBeBoundID.t) = Level.less_than lev (MustBeBoundID.get_level mbbid) in
-  Poly(lift_poly_general intern_ty intern_row must_be_bound ty)
+  let must_be_bound_row (mbbrid : MustBeBoundRowID.t) = Level.less_than lev (MustBeBoundRowID.get_level mbbrid) in
+  Poly(lift_poly_general intern_ty intern_row must_be_bound must_be_bound_row ty)
 
 
 let lift_poly_body =
   lift_poly_general
     (fun _ -> None)
     (fun _ _ -> None)
+    (fun _ -> false)
     (fun _ -> false)
 
 
@@ -352,9 +361,13 @@ let generalize_macro_type (macty : mono_macro_type) : poly_macro_type =
   let intern_ty = make_type_generalization_intern Level.bottom tvid_ht in
   let intern_row = make_row_generalization_intern Level.bottom rvid_ht in
   let must_be_bound (mbbid : MustBeBoundID.t) = Level.less_than Level.bottom (MustBeBoundID.get_level mbbid) in
+  let must_be_bound_row (mbbrid : MustBeBoundRowID.t) = Level.less_than Level.bottom (MustBeBoundRowID.get_level mbbrid) in
   let aux = function
-    | LateMacroParameter(ty)  -> LateMacroParameter(lift_poly_general intern_ty intern_row must_be_bound ty)
-    | EarlyMacroParameter(ty) -> EarlyMacroParameter(lift_poly_general intern_ty intern_row must_be_bound ty)
+    | LateMacroParameter(ty) ->
+        LateMacroParameter(lift_poly_general intern_ty intern_row must_be_bound must_be_bound_row ty)
+
+    | EarlyMacroParameter(ty) ->
+        EarlyMacroParameter(lift_poly_general intern_ty intern_row must_be_bound must_be_bound_row ty)
   in
   match macty with
   | InlineMacroType(macparamtys) -> InlineMacroType(macparamtys |> List.map aux)
