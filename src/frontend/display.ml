@@ -72,9 +72,10 @@ let collect_ids_scheme (fid_ht : unit FreeIDHashTable.t) (frid_ht : LabelSet.t F
     | TypeVariable(ptv) ->
         begin
           match ptv with
-          | PolyFree({contents = MonoLink(ty)})  -> aux_mono ty
-          | PolyFree({contents = MonoFree(fid)}) -> aux_free_id fid
-          | PolyBound(bid)                       -> aux_bound_id bid
+          | PolyFreeUpdatable({contents = MonoLink(ty)})  -> aux_mono ty
+          | PolyFreeUpdatable({contents = MonoFree(fid)}) -> aux_free_id fid
+          | PolyFreeMustBeBound(mbbid)                    -> aux_bound_id (MustBeBoundID.to_bound_id mbbid)
+          | PolyBound(bid)                                -> aux_bound_id bid
         end
 
     | FuncType(poptrow, ptydom, ptycod) ->
@@ -395,8 +396,9 @@ and show_mono_row_by_map (dispmap : DisplayMap.t) (row : mono_row) : string opti
 
 let tvf_poly (dispmap : DisplayMap.t) (plev : paren_level) (ptv : poly_type_variable) : string =
   match ptv with
-  | PolyFree(tvuref) -> tvf_mono_updatable dispmap plev !tvuref
-  | PolyBound(bid)   -> dispmap |> DisplayMap.find_bound_id bid
+  | PolyFreeUpdatable(tvuref)  -> tvf_mono_updatable dispmap plev !tvuref
+  | PolyFreeMustBeBound(mbbid) -> dispmap |> DisplayMap.find_bound_id (MustBeBoundID.to_bound_id mbbid)
+  | PolyBound(bid)             -> dispmap |> DisplayMap.find_bound_id bid
 
 
 let rvf_poly (dispmap : DisplayMap.t) (prv : poly_row_variable) : string =

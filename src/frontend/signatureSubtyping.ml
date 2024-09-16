@@ -428,8 +428,10 @@ and subtype_poly_type_impl (internbid : type_intern) (internbrid : row_intern) (
     let (_, ptymain1) = pty1 in
     let (_, ptymain2) = pty2 in
     match (ptymain1, ptymain2) with
-    | (TypeVariable(PolyFree(_)), _)
-    | (_, TypeVariable(PolyFree(_))) ->
+    | (TypeVariable(PolyFreeUpdatable(_)), _)
+    | (_, TypeVariable(PolyFreeUpdatable(_)))
+    | (TypeVariable(PolyFreeMustBeBound(_)), _)
+    | (_, TypeVariable(PolyFreeMustBeBound(_))) ->
         false
 
     | (TypeVariable(PolyBound(bid1)), _) ->

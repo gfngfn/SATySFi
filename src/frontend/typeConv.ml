@@ -101,7 +101,7 @@ fun intern_ty intern_row prow ->
 let make_type_instantiation_intern (lev : level) (qtfbl : quantifiability) (bid_ht : mono_type_variable BoundIDHashTable.t) =
   let intern_ty (rng : Range.t) (ptv : poly_type_variable) : mono_type =
     match ptv with
-    | PolyFree(tvuref) ->
+    | PolyFreeUpdatable(tvuref) ->
         (rng, TypeVariable(Updatable(tvuref)))
 
     | PolyFreeMustBeBound(mbbid) ->
@@ -162,7 +162,7 @@ let instantiate (lev : level) (qtfbl : quantifiability) ((Poly(pty)) : poly_type
 let instantiate_by_map_mono (bidmap : mono_type BoundIDMap.t) (Poly(pty) : poly_type) : mono_type =
   let intern_ty (rng : Range.t) (ptv : poly_type_variable) =
     match ptv with
-    | PolyFree(tvuref) ->
+    | PolyFreeUpdatable(tvuref) ->
         (rng, TypeVariable(Updatable(tvuref)))
 
     | PolyFreeMustBeBound(mbbid) ->
@@ -186,7 +186,7 @@ let instantiate_by_map_mono (bidmap : mono_type BoundIDMap.t) (Poly(pty) : poly_
 let instantiate_by_map_poly (bidmap : poly_type_body BoundIDMap.t) (Poly(pty) : poly_type) : poly_type =
   let intern_ty (rng : Range.t) (ptv : poly_type_variable) : poly_type_body =
     match ptv with
-    | PolyFree(_) | PolyFreeMustBeBound(_) ->
+    | PolyFreeUpdatable(_) | PolyFreeMustBeBound(_) ->
         (rng, TypeVariable(ptv))
 
     | PolyBound(bid) ->
@@ -231,7 +231,7 @@ let lift_poly_general (intern_ty : FreeID.t -> BoundID.t option) (intern_row : F
                 | MonoFree(fid) ->
                     let ptvi =
                       match intern_ty fid with
-                      | None      -> PolyFree(tvuref)
+                      | None      -> PolyFreeUpdatable(tvuref)
                       | Some(bid) -> PolyBound(bid)
                     in
                     (rng, TypeVariable(ptvi))
@@ -489,8 +489,10 @@ let rec poly_type_equal (Poly(pty1) : poly_type) (Poly(pty2) : poly_type) : bool
     | (TypeVariable(PolyBound(bid1)), TypeVariable(PolyBound(bid2))) ->
         BoundID.equal bid1 bid2
 
-    | (TypeVariable(PolyFree(_)), _)
-    | (_, TypeVariable(PolyFree(_))) ->
+    | (TypeVariable(PolyFreeUpdatable(_)), _)
+    | (_, TypeVariable(PolyFreeUpdatable(_)))
+    | (TypeVariable(PolyFreeMustBeBound(_)), _)
+    | (_, TypeVariable(PolyFreeMustBeBound(_))) ->
         false
 
     | (DataType(ptys1, tyid1), DataType(ptys2, tyid2)) ->
