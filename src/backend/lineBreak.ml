@@ -151,10 +151,9 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
   | PHGOuterFrame{ paddings = pads; decoration; contents = hbs } ->
       let lphbs = listf hbs in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphbs in
-      let (_lphbs_new, widinfo_total) = append_horz_padding_pure lphbs widinfo_sub pads in
+      let (lphbs_new, widinfo_total) = append_horz_padding_pure lphbs widinfo_sub pads in
       let metrics = (widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB) in
-      puref (LBOuterFrame{ metrics; decoration; contents = lphbs })
-        (* TODO: doubtful; maybe should use `lphbs_new` for `contents` *)
+      puref (LBOuterFrame{ metrics; decoration; contents = lphbs_new })
 
   | PHGInnerFrame{ paddings = pads; decoration = deco; contents = hbs } ->
       let lphbs = listf hbs in
