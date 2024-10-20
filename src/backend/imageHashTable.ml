@@ -49,7 +49,7 @@ let generate_tag () : key * tag =
 
 let add_pdf (abspath : abs_path) (pageno : int) =
   let pdfext =
-    try Pdfread.pdf_of_file None None (get_abs_path_string abspath) with
+    try Pdfread.pdf_of_file None None (AbsPath.to_string abspath) with
     | Pdf.PDFError(msg) -> raise (CannotLoadPdf(msg, abspath, pageno))
   in
     if pageno < 1 then
@@ -67,7 +67,7 @@ let add_pdf (abspath : abs_path) (pageno : int) =
 
 let add_image (abspath : abs_path) =
   let (imgfmt, imgheader) =
-    try Images.file_format (get_abs_path_string abspath) with
+    try Images.file_format (AbsPath.to_string abspath) with
     | Images.Wrong_file_type -> raise (ImageOfWrongFileType(abspath))
     | Sys_error(msg)         -> raise (CannotLoadImage(msg, abspath))
   in

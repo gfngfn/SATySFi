@@ -78,7 +78,7 @@ let extract_registration ~(file_path : abs_path) (d : D.source) : font_registrat
 let get_main_decoder_single (abspath : abs_path) : (D.source * font_registration) ok =
   let open ResultMonad in
   let* data =
-    read_file abspath
+    AbsPathIo.read_file abspath
       |> Result.map_error (fun msg -> FailedToReadFont(abspath, msg))
   in
   let* source =
@@ -97,7 +97,7 @@ let get_main_decoder_single (abspath : abs_path) : (D.source * font_registration
 let get_main_decoder_ttc (abspath : abs_path) (index : int) : (D.source * font_registration) ok =
   let open ResultMonad in
   let* data =
-    read_file abspath
+    AbsPathIo.read_file abspath
       |> Result.map_error (fun msg -> FailedToReadFont(abspath, msg))
   in
   let* source =
@@ -545,17 +545,17 @@ end
   end
 
 
-let select_langsys gxxx_langsys script =
+let inject_decoder ~(file_path : abs_path) =
+  Result.map_error (fun e -> FailedToDecodeFont(file_path, e))
+
+
+let select_langsys ~file_path gxxx_langsys script =
   let open ResultMonad in
-  gxxx_langsys script >>= fun langsys_res ->
-  let langsys =
-    match langsys_res with
-    | (Some(langsys), _)   -> langsys
-    | (None, langsys :: _) -> langsys
-    | (None, [])           -> remains_to_be_implemented "no langsys"
-      (* TODO: should depend on the current language system *)
-  in
-  return langsys
+  inject_decoder ~file_path @@ gxxx_langsys script >>= fun langsys_res ->
+  match langsys_res with
+  | (Some(langsys), _)   -> return langsys
+  | (None, langsys :: _) -> return langsys
+  | (None, [])           -> err UnsupportedNoLangSys (* TODO: should depend on the current language system *)
 
 
 let select_gpos_langsys = select_langsys D.Gpos.langsyses
@@ -566,46 +566,46 @@ let get_mark_table ~(file_path : abs_path) ~(units_per_em : int) (d : D.source) 
   let open ResultMonad in
   let script_tag = "latn" in  (* TODO: make Script tags changeable *)
   let mktbl = MarkTable.create () in
-  begin
-    let* () =
-      D.Gpos.get d >>= function
-      | None ->
-        (* If the font does NOT have a GPOS table: *)
-          return ()
+  let inject res = inject_decoder ~file_path res in
+  let* () =
+    inject @@ D.Gpos.get d >>= function
+    | None ->
+      (* If the font does NOT have a GPOS table: *)
+        return ()
 
-      | Some(igpos) ->
-          D.Gpos.scripts igpos >>= fun scripts ->
+    | Some(igpos) ->
+        inject @@ D.Gpos.scripts igpos >>= fun scripts ->
         pickup scripts (fun gs -> String.equal (D.Gpos.get_script_tag gs) script_tag) () <| fun script ->
-          select_gpos_langsys script >>= fun langsys ->
+        select_gpos_langsys ~file_path script >>= fun langsys ->
+        inject begin
           D.Gpos.features langsys >>= fun (_, features) ->
           let* () =
             begin
               pickup features (fun gf -> String.equal (D.Gpos.get_feature_tag gf) "mark") () <| fun feature_mark ->
-                D.Gpos.fold_subtables
-                  ~markbase1:(fun clscnt () markassoc baseassoc ->
-                    MarkTable.add_base ~units_per_em clscnt markassoc baseassoc mktbl
-                  )
-                  ~marklig1:(fun clscnt () markassoc ligassoc ->
-                    MarkTable.add_ligature ~units_per_em clscnt markassoc ligassoc mktbl
-                  )
-                  feature_mark ()
+              D.Gpos.fold_subtables
+                ~markbase1:(fun clscnt () markassoc baseassoc ->
+                  MarkTable.add_base ~units_per_em clscnt markassoc baseassoc mktbl
+                )
+                ~marklig1:(fun clscnt () markassoc ligassoc ->
+                  MarkTable.add_ligature ~units_per_em clscnt markassoc ligassoc mktbl
+                )
+                feature_mark ()
             end
           in
           let* () =
             begin
               pickup features (fun gf -> String.equal (D.Gpos.get_feature_tag gf) "mkmk") () <| fun feature_mkmk ->
-                D.Gpos.fold_subtables
-                  ~markmark1:(fun clscnt () mark1assoc mark2assoc ->
-                    MarkTable.add_mark_to_mark ~units_per_em clscnt mark1assoc mark2assoc mktbl
-                  )
-                  feature_mkmk ()
+              D.Gpos.fold_subtables
+                ~markmark1:(fun clscnt () mark1assoc mark2assoc ->
+                  MarkTable.add_mark_to_mark ~units_per_em clscnt mark1assoc mark2assoc mktbl
+                )
+                feature_mkmk ()
             end
           in
           return ()
-    in
-    return mktbl
-  end
-    |> Result.map_error (fun e -> FailedToDecodeFont(file_path, e))
+        end
+  in
+  return mktbl
 
 
 let ( -@ ) (PerMille(x1), PerMille(y1)) (PerMille(x2), PerMille(y2)) =
@@ -852,9 +852,7 @@ end
 
 let get_ligature_table ~(file_path : abs_path) (submap : subset_map) (d : D.source) : LigatureTable.t ok =
   let open ResultMonad in
-  let inject res =
-    res |> Result.map_error (fun e -> FailedToDecodeFont(file_path, e))
-  in
+  let inject res = inject_decoder ~file_path res in
   let script_tag = "latn" in  (* TODO: make Script tags changeable *)
   let ligtbl = LigatureTable.create submap 32 (* arbitrary constant; the initial size of the hash table *) in
   let* () =
@@ -866,7 +864,7 @@ let get_ligature_table ~(file_path : abs_path) (submap : subset_map) (d : D.sour
     | Some(igsub) ->
         inject @@ D.Gsub.scripts igsub >>= fun scripts ->
         pickup scripts (fun gs -> String.equal (D.Gsub.get_script_tag gs) script_tag) () <| fun script ->
-        inject @@ select_gsub_langsys script >>= fun langsys ->
+        select_gsub_langsys ~file_path script >>= fun langsys ->
         inject @@ D.Gsub.features langsys >>= fun (_, features) ->
         pickup features (fun gf -> String.equal (D.Gsub.get_feature_tag gf) "liga") () <| fun feature ->
         let* res =
@@ -1006,8 +1004,7 @@ let get_kerning_table ~(file_path : abs_path) (d : D.source) =
     | Some(igpos) ->
         inject @@ D.Gpos.scripts igpos >>= fun scripts ->
         pickup scripts (fun gs -> String.equal (D.Gpos.get_script_tag gs) script_tag) () <| fun script ->
-        inject @@ select_gpos_langsys script >>= fun langsys ->
-          (* TODO: make LangSys tags changeable *)
+        select_gpos_langsys ~file_path script >>= fun langsys -> (* TODO: make LangSys tags changeable *)
         inject @@ D.Gpos.features langsys >>= fun (_, features) ->
         pickup features (fun gf -> String.equal (D.Gpos.get_feature_tag gf) "kern") () <| fun feature ->
         inject @@ D.Gpos.fold_subtables
@@ -1726,10 +1723,10 @@ module Type0 = struct
         FontFile3("OpenType")
     in
     let* (obj_descr, subset_tag_opt) = pdfobject_of_font_descriptor pdf dcdr fontdescr base_font font_file in
-    let obj_cid_to_gid_map =
+    let* obj_cid_to_gid_map =
       match cidty2font.CIDFontType2.cid_to_gid_map with
-      | CIDToGIDIdentity -> Pdf.Name("/Identity")
-      | _                -> remains_to_be_implemented "/CIDToGIDMap other than /Identity"
+      | CIDToGIDIdentity -> return @@ Pdf.Name("/Identity")
+      | _                -> err UnsupportedCidToGidMapOtherThanIdentity (* TODO: consider supporting this *)
     in
     let dwpm_opt =
       cidty2font.CIDFontType2.dw |> Option.map (fun dw -> per_mille ~units_per_em dw)
@@ -1993,15 +1990,10 @@ let assoc_to_map f gidassoc =
 
 let make_math_decoder_from_decoder (abspath : abs_path) (dcdr : decoder) (font : font) : (math_decoder * font) ok =
   let open ResultMonad in
-  let inject res =
-    res |> Result.map_error (fun e -> FailedToDecodeFont(abspath, e))
-  in
+  let inject res = inject_decoder ~file_path:abspath res in
   let units_per_em = dcdr.units_per_em in
   let d = dcdr.main in
-  let* mathraw_opt =
-    D.Math.get d
-      |> Result.map_error (fun e -> FailedToDecodeFont(abspath, e))
-  in
+  inject @@ D.Math.get d >>= fun mathraw_opt ->
   match mathraw_opt with
   | None ->
       err @@ NoMathTable(abspath)
@@ -2041,7 +2033,7 @@ let make_math_decoder_from_decoder (abspath : abs_path) (dcdr : decoder) (font :
         | Some(igsub) ->
             inject @@ D.Gsub.scripts igsub >>= fun scripts ->
             pickup scripts (fun gs -> String.equal (D.Gsub.get_script_tag gs) "math") None <| fun script_math ->
-            inject @@ select_gsub_langsys script_math >>= fun langsys ->
+            select_gsub_langsys ~file_path:abspath script_math >>= fun langsys ->
             inject @@ D.Gsub.features langsys >>= fun (_, features) ->
             pickup features (fun gf -> String.equal (D.Gsub.get_feature_tag gf) "ssty") None <| fun ssty ->
             return @@ Some(ssty)

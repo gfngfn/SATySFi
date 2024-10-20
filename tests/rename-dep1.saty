@@ -1,0 +1,11 @@
+use package StdJaRenamed
+
+let open StdJaRenamed in
+document (|
+  title = {Tests for “Used As”},
+  author = {Takashi Suwa},
+|) '<
+  +p{
+    Hello
+  }
+>

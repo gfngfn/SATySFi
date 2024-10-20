@@ -31,13 +31,6 @@
     ) utasts (Range.dummy "expr-list-nil", UTEndOfList)
 
 
-  let curry_lambda_abstraction (param_units : untyped_parameter_unit list) (utast : untyped_abstract_tree) : untyped_abstract_tree =
-    let rng = Range.dummy "curry_lambda_abstraction" in
-    utast |> List.fold_right (fun param_unit utast ->
-      (rng, UTFunction(param_unit, utast))
-    ) param_units
-
-
   (* TODO (enhance): more efficient implementation *)
   let rec omit_pre_spaces str =
     let len = String.length str in
@@ -276,6 +269,7 @@
 %token<Range.t * string> CHAR
 %token<Range.t * string * bool * bool> STRING
 %token<Range.t * Types.input_position * string> POSITIONED_STRING
+%token<Range.t * string> HERE
 
 %token<Range.t> SPACE BREAK
 %token<Range.t * string> MATHCHARS
@@ -314,6 +308,7 @@
 %type<Types.manual_row_base_kind> kind_row
 %type<Types.type_variable_name Types.ranged> tyquant
 %type<Types.row_variable_name ranged * Types.manual_row_base_kind> rowquant
+%type<Types.manual_quantifier> quant
 %type<Types.manual_type> typ_app
 %type<Types.manual_type> typ_bot
 %type<Types.untyped_abstract_tree> expr
@@ -370,19 +365,19 @@ main:
       { raise (ParseError(EmptyInputFile(rng))) }
 ;
 main_lib:
-  | MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; STRUCT; utbinds=list(bind); END
-      { (modident, utsig_opt, utbinds) }
+  | MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; tok1=STRUCT; utbinds=list(bind); tok2=END
+      { (modident, utsig_opt, Range.unite tok1 tok2, utbinds) }
 ;
 headerelem:
-  | USE; PACKAGE; opening=optional_open; mod_chain=mod_chain
-     { HeaderUsePackage{ opening; mod_chain } }
-  | USE; opening=optional_open; mod_chain=mod_chain
-     { HeaderUse{ opening; mod_chain } }
-  | USE; opening=optional_open; mod_chain=mod_chain; OF; tok=STRING
+  | USE; PACKAGE; opening=optional_open; attributes=list(attribute); mod_chain=mod_chain
+     { HeaderUsePackage{ attributes; opening; mod_chain } }
+  | USE; opening=optional_open; attributes=list(attribute); mod_chain=mod_chain
+     { HeaderUse{ attributes; opening; mod_chain } }
+  | USE; opening=optional_open; attributes=list(attribute); mod_chain=mod_chain; OF; tok=STRING
      {
        let (_rng, str, pre, post) = tok in
-       let s = omit_spaces pre post str in
-       HeaderUseOf{ opening; mod_chain; path = s }
+       let relpath_without_ext = omit_spaces pre post str in
+       HeaderUseOf{ attributes; opening; mod_chain; relpath_without_ext }
      }
 ;
 optional_open:
@@ -455,8 +450,8 @@ bind:
       }
   | tokL=TYPE; uttypebind=bind_type
       { (tokL, UTBindType(uttypebind)) }
-  | tokL=MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; utmod=modexpr
-      { (tokL, UTBindModule(modident, utsig_opt, utmod)) }
+  | attrs=list(attribute); tokL=MODULE; modident=UPPER; utsig_opt=option(sig_annot); EXACT_EQ; utmod=modexpr
+      { (tokL, UTBindModule(attrs, modident, utsig_opt, utmod)) }
   | tokL=SIGNATURE; sigident=UPPER; EXACT_EQ; utsig=sigexpr
       { (tokL, UTBindSignature(sigident, utsig)) }
   | tokL=INCLUDE; utmod=modexpr
@@ -481,24 +476,45 @@ bind_value_rec:
       { valbinds }
 ;
 bind_value_nonrec:
-  | ident=bound_identifier; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident=bound_identifier; quant_and_param_units=quant_and_param_units; mntyopt_ret=return_type; EXACT_EQ; utast=expr
       {
-        let curried = curry_lambda_abstraction param_units utast in
-        (ident, curried)
+        let (mnquant, param_units) = quant_and_param_units in
+        UTLetBinding{
+          identifier  = ident;
+          quantifier  = mnquant;
+          parameters  = param_units;
+          return_type = mntyopt_ret;
+          body        = utast;
+        }
       }
 ;
+return_type:
+  | COLON; mnty=typ { Some(mnty) }
+  |                 { None }
+;
 bind_inline:
-  | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=BACKSLASH_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
-        (cs,
-          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaInlineCommand{
-            parameters       = param_units;
-            context_variable = ident_ctx;
-            body             = utast;
-          }))
+        let (mnquant, param_units) = quant_and_param_units in
+        let utast_cmd_abs =
+          make_standard (Ranged ident_ctx) (Ranged utast)
+            (UTLambdaInlineCommand{
+              parameters       = param_units;
+              context_variable = ident_ctx;
+              body             = utast;
+            })
+        in
+        UTLetBinding{
+          identifier  = cs;
+          quantifier  = mnquant;
+          parameters  = [];
+          return_type = None;
+          body        = utast_cmd_abs;
+        }
       }
-  | cs=BACKSLASH_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | cs=BACKSLASH_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
+        let (mnquant, param_units) = quant_and_param_units in
         let rng_ctx = Range.dummy "context-of-lightweight-let-inline" in
         let varnm_ctx = "%context" in
         let ident_ctx = (rng_ctx, varnm_ctx) in
@@ -506,26 +522,46 @@ bind_inline:
           let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
           (Range.dummy "read-inline-of-lightweight-let-inline", UTReadInline(utast_ctx, utast))
         in
-        (cs,
-          make_standard (Ranged cs) (Ranged utast) (UTLambdaInlineCommand{
-            parameters       = param_units;
-            context_variable = ident_ctx;
-            body             = utast_body;
-          }))
+        let utast_cmd_abs =
+          make_standard (Ranged cs) (Ranged utast)
+            (UTLambdaInlineCommand{
+              parameters       = param_units;
+              context_variable = ident_ctx;
+              body             = utast_body;
+            })
+        in
+        UTLetBinding{
+          identifier  = cs;
+          quantifier  = mnquant;
+          parameters  = [];
+          return_type = None;
+          body        = utast_cmd_abs;
+        }
       }
 ;
 bind_block:
-  | ident_ctx=LOWER; cs=PLUS_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=PLUS_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
-        (cs,
-          make_standard (Ranged ident_ctx) (Ranged utast) (UTLambdaBlockCommand{
-            parameters       = param_units;
-            context_variable = ident_ctx;
-            body             = utast;
-          }))
+        let (mnquant, param_units) = quant_and_param_units in
+        let utast_cmd_abs =
+          make_standard (Ranged ident_ctx) (Ranged utast)
+            (UTLambdaBlockCommand{
+              parameters       = param_units;
+              context_variable = ident_ctx;
+              body             = utast;
+            })
+        in
+        UTLetBinding{
+          identifier  = cs;
+          quantifier  = mnquant;
+          parameters  = [];
+          return_type = None;
+          body        = utast_cmd_abs;
+        }
       }
-  | cs=PLUS_CMD; param_units=list(param_unit); EXACT_EQ; utast=expr
+  | cs=PLUS_CMD; quant_and_param_units=quant_and_param_units; EXACT_EQ; utast=expr
       {
+        let (mnquant, param_units) = quant_and_param_units in
         let rng_ctx = Range.dummy "context-of-lightweight-let-block" in
         let varnm_ctx = "%context" in
         let ident_ctx = (rng_ctx, varnm_ctx) in
@@ -533,24 +569,43 @@ bind_block:
           let utast_ctx = (rng_ctx, UTContentOf([], ident_ctx)) in
           (Range.dummy "read-block-of-lightweight-let-block", UTReadBlock(utast_ctx, utast))
         in
-        (cs,
-          make_standard (Ranged cs) (Ranged utast) (UTLambdaBlockCommand{
-            parameters       = param_units;
-            context_variable = ident_ctx;
-            body             = utast_body;
-          }))
+        let utast_cmd_abs =
+          make_standard (Ranged cs) (Ranged utast)
+            (UTLambdaBlockCommand{
+              parameters       = param_units;
+              context_variable = ident_ctx;
+              body             = utast_body;
+            })
+        in
+        UTLetBinding{
+          identifier  = cs;
+          quantifier  = mnquant;
+          parameters  = [];
+          return_type = None;
+          body        = utast_cmd_abs;
+        }
       }
 ;
 bind_math:
-  | ident_ctx=LOWER; cs=BACKSLASH_CMD; param_units=list(param_unit); scripts_param_opt=option(scripts_param); EXACT_EQ; utast=expr
+  | ident_ctx=LOWER; cs=BACKSLASH_CMD; quant_and_param_units=quant_and_param_units; scripts_param_opt=option(scripts_param); EXACT_EQ; utast=expr
       {
-        (cs,
-          make_standard (Ranged cs) (Ranged utast) (UTLambdaMathCommand{
-            parameters       = param_units;
-            context_variable = ident_ctx;
-            script_variables = scripts_param_opt;
-            body             = utast;
-          }))
+        let (mnquant, param_units) = quant_and_param_units in
+        let utast_cmd_abs =
+          make_standard (Ranged cs) (Ranged utast)
+            (UTLambdaMathCommand{
+              parameters       = param_units;
+              context_variable = ident_ctx;
+              script_variables = scripts_param_opt;
+              body             = utast;
+            })
+        in
+        UTLetBinding{
+          identifier  = cs;
+          quantifier  = mnquant;
+          parameters  = [];
+          return_type = None;
+          body        = utast_cmd_abs;
+        }
       }
 ;
 scripts_param:
@@ -644,9 +699,27 @@ decl:
   | INCLUDE; utsig=sigexpr
       { UTDeclInclude(utsig) }
 ;
+quant_and_param_units:
+  | tyquants=list(tyquant); subseq=rowquant_and_param_units
+      {
+        let (rowquants, param_units) = subseq in
+        (ManualQuantifier(tyquants, rowquants), param_units)
+      }
+;
+rowquant_and_param_units:
+  | rowquant=rowquant; subseq=rowquant_and_param_units
+      {
+        let (rowquants, param_units) = subseq in
+        (rowquant :: rowquants, param_units)
+      }
+  | param_unit=param_unit; param_units=list(param_unit)
+      { ([], param_unit :: param_units) }
+  |
+      { ([], []) }
+;
 quant:
   | tyquants=list(tyquant); rowquants=list(rowquant)
-      { (tyquants, rowquants) }
+      { ManualQuantifier(tyquants, rowquants) }
 ;
 tyquant:
   | tyvar=TYPEVAR
@@ -656,17 +729,16 @@ rowquant:
   | L_PAREN; rowvar=ROWVAR; CONS; mnrbkd=kind_row; R_PAREN
       { (rowvar, mnrbkd) }
 ;
+/* Cannot use `option(opt_params)` because of shift/reduce conflicts: */
 param_unit:
-  | opts_opt=option(opt_params); utpat=pattern_bot
-      {
-        let opts = opts_opt |> Option.value ~default:[] in
-        UTParameterUnit(opts, utpat, None)
-      }
-  | opts_opt=option(opt_params); L_PAREN; utpat=pattern; COLON; mnty=typ; R_PAREN
-      {
-        let opts = opts_opt |> Option.value ~default:[] in
-        UTParameterUnit(opts, utpat, Some(mnty))
-      }
+  | utpat=pattern_bot
+      { UTParameterUnit([], utpat, None) }
+  | opts=opt_params; utpat=pattern_bot
+      { UTParameterUnit(opts, utpat, None) }
+  | L_PAREN; utpat=pattern; COLON; mnty=typ; R_PAREN
+      { UTParameterUnit([], utpat, Some(mnty)) }
+  | opts=opt_params; L_PAREN; utpat=pattern; COLON; mnty=typ; R_PAREN
+      { UTParameterUnit(opts, utpat, Some(mnty)) }
 ;
 opt_params:
   | QUESTION; L_PAREN; opts=optterm_nonempty_list(COMMA, opt_param); R_PAREN
@@ -942,6 +1014,11 @@ expr_bot:
       {
         let (rng, ipos, s) = tok in
         make_standard (Tok rng) (Tok rng) (UTPositionedString(ipos, s))
+      }
+  | tok=HERE
+      {
+        let (rng, abspathstr) = tok in
+        make_standard (Tok rng) (Tok rng) (UTStringConstant(abspathstr))
       }
   | tokL=L_PAREN; ident=binop; tokR=R_PAREN
       { make_standard (Tok tokL) (Tok tokR) (UTContentOf([], ident)) }

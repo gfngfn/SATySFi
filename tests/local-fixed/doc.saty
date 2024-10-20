@@ -1,0 +1,13 @@
+use package open StdJaReport
+use package ShowValue
+
+document (|
+  title = {The Title of Your Document},
+  author = {Your Name},
+|) '<
+  +chapter{First Chapter}<
+    +p{
+      Hello, world! \ShowValue.int-sum([42, 57]);
+    }
+  >
+>

@@ -1,0 +1,34 @@
+saphe: "^0.1.0-alpha.1"
+satysfi: "^0.1.0-alpha.1"
+name: "font-junicode"
+authors: []
+external_resources:
+  - name: "junicode-1.002"
+    zip:
+      url: "https://downloads.sourceforge.net/project/junicode/junicode/junicode-1.002/junicode-1.002.zip"
+      checksum: "b1d6ed8796d8d1eacd733c0d568d939f"
+      extractions:
+        - from: "Junicode.ttf"
+          to: "./fonts/Junicode.ttf"
+        - from: "Junicode-Bold.ttf"
+          to: "./fonts/Junicode-Bold.ttf"
+        - from: "Junicode-Italic.ttf"
+          to: "./fonts/Junicode-Italic.ttf"
+        - from: "Junicode-BoldItalic.ttf"
+          to: "./fonts/Junicode-BoldItalic.ttf"
+contents:
+  font:
+    main_module: "FontJunicode"
+    files:
+      - path: "./fonts/Junicode.ttf"
+        opentype_single:
+          name: "normal"
+      - path: "./fonts/Junicode-Bold.ttf"
+        opentype_single:
+          name: "bold"
+      - path: "./fonts/Junicode-Italic.ttf"
+        opentype_single:
+          name: "italic"
+      - path: "./fonts/Junicode-BoldItalic.ttf"
+        opentype_single:
+          name: "bold-italic"

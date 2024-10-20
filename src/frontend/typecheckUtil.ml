@@ -83,3 +83,44 @@ let add_to_type_environment_by_signature (ssig : StructSig.t) (tyenv : Typeenv.t
     ~m:(fun modnm mentry -> Typeenv.add_module modnm mentry)
     ~s:(fun signm absmodsig -> Typeenv.add_signature signm absmodsig)
     tyenv
+
+
+let decode_manual_row_base_kind (mnrbkd : manual_row_base_kind) : row_base_kind ok =
+  let open ResultMonad in
+  mnrbkd |> foldM (fun labset (rng, label) ->
+    if labset |> LabelSet.mem label then
+      err (LabelUsedMoreThanOnce(rng, label))
+    else
+      return (labset |> LabelSet.add label)
+  ) LabelSet.empty
+
+
+let add_type_parameters (lev : Level.t) (tyvars : (type_variable_name ranged) list) (typarammap : type_parameter_map) : (type_parameter_map * BoundID.t list) ok =
+  let open ResultMonad in
+  let* (typarammap, bidacc) =
+    tyvars |> foldM (fun (typarammap, bidacc) (rng, tyvarnm) ->
+      if typarammap |> TypeParameterMap.mem tyvarnm then
+        err (TypeParameterBoundMoreThanOnce(rng, tyvarnm))
+      else
+        let mbbid = MustBeBoundID.fresh lev in
+        let bid = MustBeBoundID.to_bound_id mbbid in
+        return (typarammap |> TypeParameterMap.add tyvarnm mbbid, Alist.extend bidacc bid)
+    ) (typarammap, Alist.empty)
+  in
+  return (typarammap, Alist.to_list bidacc)
+
+
+let add_row_parameters (lev : Level.t) (rowvars : (row_variable_name ranged * manual_row_base_kind) list) (rowparammap : row_parameter_map) : (row_parameter_map * BoundRowID.t list) ok =
+  let open ResultMonad in
+  let* (rowparammap, bridacc) =
+    rowvars |> foldM (fun (rowparammap, bridacc) ((rng, rowvarnm), mnbrkd) ->
+      if rowparammap |> RowParameterMap.mem rowvarnm then
+        err (LabelUsedMoreThanOnce(rng, rowvarnm))
+      else
+        decode_manual_row_base_kind mnbrkd >>= fun labset ->
+        let mbbrid = MustBeBoundRowID.fresh lev labset in
+        let brid = MustBeBoundRowID.to_bound_id mbbrid in
+        return (rowparammap |> RowParameterMap.add rowvarnm mbbrid, Alist.extend bridacc brid)
+    ) (rowparammap, Alist.empty)
+  in
+  return (rowparammap, Alist.to_list bridacc)

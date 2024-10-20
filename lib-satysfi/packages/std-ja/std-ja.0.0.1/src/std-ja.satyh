@@ -3,6 +3,9 @@ use package Math
 use package Code
 use package Annot
 
+use package HyphEnglish
+use package Unidata
+
 use package FontJunicode
 use package FontIpaEx
 use package FontLatinModern
@@ -18,13 +21,13 @@ module StdJa :> sig
       paper-size       : length * length,
       text-width       : length,
       text-height      : length,
-      text-origin      : Pervasives.point, %- TODO: remove this by using 'open'
-      header-origin    : Pervasives.point,
-      footer-origin    : Pervasives.point,
+      text-origin      : point,
+      header-origin    : point,
+      footer-origin    : point,
       header-width     : length,
       footer-width     : length,
     ) (|
-      title : inline-text,
+      title  : inline-text,
       author : inline-text,
     |) -> block-text -> document
 
@@ -112,7 +115,9 @@ end = struct
 
   val get-standard-context wid =
     get-initial-context wid (command \Math.math)
-      |> set-code-text-command (command \Code.code)
+      |> set-code-text-command (command \Code.Default.code)
+      |> set-hyphenation-dictionary HyphEnglish.hyphenation
+      |> set-unicode-char-database Unidata.unidata
       |> set-dominant-wide-script Kana
       |> set-language Kana Japanese
       |> set-language HanIdeographic Japanese
@@ -131,7 +136,7 @@ end = struct
 
   val height-of-float-boxes pageno =
 %    let () = display-message `get height` in
-    (!ref-float-boxes) |> List.fold-left (fun h (pn, bb) -> (
+    (!ref-float-boxes) |> List.fold (fun h (pn, bb) -> (
       if pn < pageno then h +' (get-natural-length bb) else h
     )) 0pt
 
@@ -143,8 +148,7 @@ end = struct
     let () = ref-figure <- !ref-figure + 1 in
     let s-num = embed-string (arabic (!ref-figure)) in
     let bb-inner =
-      let d (_, _) _ _ _ = Gr.empty in
-      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) (d, d, d, d) (fun ctx -> (
+      block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) VDecoSet.empty (fun ctx -> (
         read-block ctx inner
           +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#s-num; #caption;} ++ inline-fil)
       ))
@@ -223,11 +227,11 @@ end = struct
 %        if get-text-width ctx <' get-natural-width ib-title then
 %          form-paragraph ctx-title (ib-title ++ inline-fil)
 %        else
-          Pervasives.form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil)
+          Block.form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil)
       in
-      let bb-line = Pervasives.form-paragraph ctx (ib-line ++ inline-fil) in
-      let bb-author = Pervasives.form-paragraph ctx-author (inline-fil ++ ib-author) in
-        bb-title +++ bb-line +++ bb-author
+      let bb-line = Block.form-paragraph ctx (ib-line ++ inline-fil) in
+      let bb-author = Block.form-paragraph ctx-author (inline-fil ++ ib-author) in
+      bb-title +++ bb-line +++ bb-author
     ))
 
 
@@ -317,22 +321,22 @@ end = struct
           line-break true false ctx-doc (read-inline (make-section-title ctx-doc) {目次} ++ inline-fil)
         in
         let bb-toc-main =
-          (!toc-acc-ref) |> List.reverse |> List.fold-left (fun bbacc tocelem -> (
+          (!toc-acc-ref) |> List.reverse |> List.fold (fun bbacc tocelem -> (
             match tocelem with
             | TOCElementSection(label, title) ->
                 let it-num = embed-string (get-cross-reference-number label) in
                 let it-page = embed-string (get-cross-reference-page label) in
-                  bbacc +++ line-break true true ctx-doc
-                    (inline-frame-breakable no-pads (Annot.link-to-location-frame label None)
-                    (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page))
+                bbacc +++ line-break true true ctx-doc
+                  (inline-frame-breakable no-pads (Annot.link-to-location-frame label None)
+                  (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page))
 
             | TOCElementSubsection(label, title) ->
                   let it-num = embed-string (get-cross-reference-number label) in
                   let it-page = embed-string (get-cross-reference-page label) in
-                    bbacc +++ line-break true true ctx-doc
-                      (inline-skip 20pt ++ (inline-frame-breakable no-pads
-                        (Annot.link-to-location-frame label None)
-                        (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page)))
+                  bbacc +++ line-break true true ctx-doc
+                    (inline-skip 20pt ++ (inline-frame-breakable no-pads
+                      (Annot.link-to-location-frame label None)
+                      (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page)))
             end
           )) block-nil
         in
@@ -363,7 +367,7 @@ end = struct
        in
 %       let () = display-message `insert` in
        let (bb-float-boxes, acc) =
-         (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
+         (!ref-float-boxes) |> List.fold (fun (bbacc, acc) elem -> (
            let (pn, bb) = elem in
              if pn < pageno then
                let bbs =
@@ -371,7 +375,7 @@ end = struct
                    (inline-fil ++ embed-block-top ctx txtwid (fun _ -> bb) ++ inline-fil)
                      % 'ctx' is a dummy context
                in
-                 (bbacc +++ bbs, acc)
+               (bbacc +++ bbs, acc)
              else
                (bbacc, elem :: acc)
          )) (block-nil, [])
@@ -380,45 +384,42 @@ end = struct
           line-break true true ctx ib-text
             +++ line-break true true (ctx |> set-paragraph-margin 0pt 6pt)
               ((inline-graphics hdrwid thickness 0pt
-                (fun (x, y) -> fill Color.black (Gr.rectangle (x, y) (x +' hdrwid, y +' thickness)))) ++ inline-fil)
+                (fun (x, y) -> fill Color.black (Path.rectangle (x, y) (x +' hdrwid, y +' thickness)))) ++ inline-fil)
             +++ bb-float-boxes
       in
       let footer =
         if show-pages then
           let ctx = get-standard-context ftrwid in
           let it-pageno = embed-string (arabic pbinfo#page-number) in
-            line-break true true ctx
-              (inline-fil ++ (read-inline ctx {— #it-pageno; —}) ++ inline-fil)
+          line-break true true ctx
+            (inline-fil ++ (read-inline ctx {— #it-pageno; —}) ++ inline-fil)
         else
           block-nil
       in
-        (|
-          header-origin  = hdrorg,
-          header-content = header,
-          footer-origin  = ftrorg,
-          footer-content = footer,
-        |)
+      (|
+        header-origin  = hdrorg,
+        header-content = header,
+        footer-origin  = ftrorg,
+        footer-content = footer,
+      |)
     in
     let doc = page-break page pagecontf pagepartsf (bb-title +++ bb-toc +++ bb-main) in
     let () = register-outline (List.reverse !outline-ref) in
-      doc
-
+    doc
 
   val mutable needs-indentation-ref <- true
 
   val mutable num-section <- 0
   val mutable num-subsection <- 0
 
-
   val quad-indent ctx =
     inline-skip (get-font-size ctx)
-
 
   val block ctx +p inner =
     let needs-indentation =
       if !needs-indentation-ref then true else
         let () = needs-indentation-ref <- true in
-          false
+        false
     in
     let ib-inner = read-inline ctx inner in
     let br-parag =
@@ -427,14 +428,12 @@ end = struct
       else
         ib-inner ++ inline-fil
     in
-    Pervasives.form-paragraph ctx br-parag
-
+    Block.form-paragraph ctx br-parag
 
   val block ctx +pn inner =
     let () = needs-indentation-ref <- true in
     let ib-inner = read-inline ctx inner in
-    Pervasives.form-paragraph ctx (ib-inner ++ inline-fil)
-
+    Block.form-paragraph ctx (ib-inner ++ inline-fil)
 
   val section-scheme ctx label title outline-title-opt inner =
     let ctx-title = make-section-title ctx in
@@ -457,7 +456,7 @@ end = struct
           (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))
     in
     let bb-inner = read-block ctx inner in
-      bb-title +++ bb-inner
+    bb-title +++ bb-inner
 
 
   val subsection-scheme ctx label title outline-title-opt inner =
@@ -480,8 +479,7 @@ end = struct
           (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))
     in
     let bb-inner = read-block ctx inner in
-      bb-title +++ bb-inner
-
+    bb-title +++ bb-inner
 
   val block ctx +section ?(label = labelopt, outline-title = outline-title-opt) title inner =
     let label =
@@ -490,8 +488,7 @@ end = struct
       | Some(label) -> label
       end
     in
-      section-scheme ctx label title outline-title-opt inner
-
+    section-scheme ctx label title outline-title-opt inner
 
   val block ctx +subsection ?(label = labelopt, outline-title = outline-title-opt) title inner =
     let label =
@@ -500,8 +497,7 @@ end = struct
       | Some(label) -> label
       end
     in
-      subsection-scheme ctx label title outline-title-opt inner
-
+    subsection-scheme ctx label title outline-title-opt inner
 
   val inline ctx \emph inner =
     let ctx-emph =

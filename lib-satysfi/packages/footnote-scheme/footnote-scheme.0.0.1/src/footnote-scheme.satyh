@@ -63,7 +63,7 @@ end = struct
           let wid = get-text-width ctx *' bar-ratio in
           let ib =
             inline-graphics wid bar-top-margin bar-bottom-margin (fun (x, y) ->
-              stroke 0.5pt Color.black (Gr.line (x, y) (x +' wid, y))
+              stroke 0.5pt Color.black (Path.line (x, y) (x +' wid, y))
             ) ++ inline-fil
           in
           line-break false false (ctx |> set-paragraph-margin 0pt 0pt) ib
@@ -73,7 +73,7 @@ end = struct
           block-skip (size *' 0.5)
       end
     in
-      Pervasives.no-break
+      Inline.no-break
         (add-footnote (bb-before +++ bb) ++ ib-num
           ++ hook-page-break (fun _ _ -> (
             let () =

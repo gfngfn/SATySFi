@@ -1,0 +1,6 @@
+(executable
+ (name saphe)
+ (public_name saphe)
+ (package saphe)
+ (libraries sapheMain satysfi-common cmdliner)
+ (preprocess no_preprocessing))

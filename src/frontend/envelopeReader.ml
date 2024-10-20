@@ -1,0 +1,87 @@
+
+open MyUtil
+open LoggingUtil
+open EnvelopeSystemBase
+open ConfigError
+open Types
+
+
+type 'a ok = ('a, config_error) result
+
+
+let listup_sources_in_directory (extensions : string list) (absdir_src : abs_path) : (abs_path list) ok =
+  let open ResultMonad in
+  let* filenames =
+    AbsPathIo.readdir absdir_src
+      |> Result.map_error (fun message -> CannotReadDirectory{ path = absdir_src; message })
+  in
+  let abspaths =
+    filenames |> List.filter_map (fun filename ->
+      if extensions |> List.exists (fun suffix -> Core.String.is_suffix filename ~suffix) then
+        Some(AbsPath.append_to_directory absdir_src filename)
+      else
+        None
+    )
+  in
+  return abspaths
+
+
+let main (logging_spec : logging_spec) ~(use_test_files : bool) ~(extensions : string list) ~envelope_config:(abspath_envelope_config : abs_path) : (EnvelopeConfig.t * untyped_envelope) ok =
+  let open ResultMonad in
+  let* config = EnvelopeConfig.load abspath_envelope_config in
+  let absdir_envelope = AbsPath.dirname abspath_envelope_config in
+  let* envelope =
+    match config.envelope_contents with
+    | Library{ main_module_name; source_directories; test_directories; _ } ->
+        let absdirs_src = source_directories |> List.map (AbsPath.append_to_directory absdir_envelope) in
+        let* abspaths_src =
+          absdirs_src |> mapM (listup_sources_in_directory extensions) |> Result.map List.concat
+        in
+        let* abspaths =
+          if use_test_files then
+            let absdirs_test = test_directories |> List.map (AbsPath.append_to_directory absdir_envelope) in
+            let* abspaths_test =
+              absdirs_test |> mapM (listup_sources_in_directory extensions) |> Result.map List.concat
+            in
+            return @@ List.append abspaths_src abspaths_test
+          else
+            return abspaths_src
+        in
+        let* acc =
+          abspaths |> foldM (fun acc abspath_src ->
+            let* utsrc =
+              Logging.begin_to_parse_file logging_spec abspath_src;
+              ParserInterface.process_file abspath_src |> Result.map_error (fun e -> FailedToParse(e))
+            in
+            match utsrc with
+            | UTLibraryFile(utlib) ->
+                return @@ Alist.extend acc (abspath_src, utlib)
+
+            | UTDocumentFile(_) ->
+                err @@ NotALibraryFile(abspath_src)
+
+          ) Alist.empty
+        in
+        let modules = Alist.to_list acc in
+        return @@ UTLibraryEnvelope{
+          main_module_name;
+          modules;
+        }
+
+    | Font{ main_module_name; font_file_descriptions } ->
+        let font_files =
+          font_file_descriptions |> List.map (fun font_file_description ->
+            let { font_file_path; font_file_contents } = font_file_description in
+            let abspath = AbsPath.append_to_directory absdir_envelope font_file_path in
+            {
+              r_font_file_path     = abspath;
+              r_font_file_contents = font_file_contents;
+            }
+          )
+        in
+        return @@ UTFontEnvelope{
+          main_module_name;
+          font_files;
+        }
+  in
+  return (config, envelope)

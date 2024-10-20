@@ -2,8 +2,12 @@
 open MyUtil
 open CharBasis
 
-val set_from_file : abs_path -> unit
+type t
 
-val find : Uchar.t -> line_break_class
+val empty : t
 
-val append_break_opportunity : Uchar.t list -> break_opportunity -> break_opportunity * line_break_element list
+val make_from_file : abs_path -> t
+
+val find : Uchar.t -> t -> line_break_class
+
+val append_break_opportunity : t -> Uchar.t list -> break_opportunity -> break_opportunity * line_break_element list

@@ -151,10 +151,9 @@ let convert_pure_box_for_line_breaking_scheme (type a) (listf : horz_box list ->
   | PHGOuterFrame{ paddings = pads; decoration; contents = hbs } ->
       let lphbs = listf hbs in
       let (widinfo_sub, hgt, dpt) = get_total_metrics lphbs in
-      let (_lphbs_new, widinfo_total) = append_horz_padding_pure lphbs widinfo_sub pads in
+      let (lphbs_new, widinfo_total) = append_horz_padding_pure lphbs widinfo_sub pads in
       let metrics = (widinfo_total, hgt +% pads.paddingT, dpt -% pads.paddingB) in
-      puref (LBOuterFrame{ metrics; decoration; contents = lphbs })
-        (* TODO: doubtful; maybe should use `lphbs_new` for `contents` *)
+      puref (LBOuterFrame{ metrics; decoration; contents = lphbs_new })
 
   | PHGInnerFrame{ paddings = pads; decoration = deco; contents = hbs } ->
       let lphbs = listf hbs in
@@ -251,14 +250,16 @@ let can_break_before tail =
 
 
 let is_whitespace_character (uch : Uchar.t) : bool =
-  match LineBreakDataMap.find uch with
-  | SP | INBR -> true
-  | _         -> false
-     (* --
-        needs re-consideration:
-        it may be better to use the criterion of whether
-        the general category of the given character is `Zs` or not.
-        -- *)
+  match Uchar.to_int uch with
+  | 0x000A
+  | 0x000B
+  | 0x000C
+  | 0x000D
+  | 0x0020
+  | 0x0085 -> true
+  | _      -> false
+     (* TODO: re-consider this; it may be better to use the criterion of whether
+        the general category of the given character is `Zs` or not. *)
 
 
 let rec omit_space_uchars (uchlst : Uchar.t list) : Uchar.t list =

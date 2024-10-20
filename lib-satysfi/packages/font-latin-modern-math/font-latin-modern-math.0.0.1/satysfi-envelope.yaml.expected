@@ -1,0 +1,7 @@
+font:
+  main_module: FontLatinModernMath
+  files:
+  - path: ./fonts/latinmodern-math.otf
+    opentype_single:
+      name: main
+      math: true

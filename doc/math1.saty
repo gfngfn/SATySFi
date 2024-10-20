@@ -1,24 +1,5 @@
-#[config (|
-  registries = [
-    (|
-      name = `default`,
-      remote =
-        Git(|
-          url = `https://github.com/SATySFi/default-registry`,
-          branch = `format-1`,
-        |)
-    |)
-  ],
-  dependencies = [
-    (| name = `stdlib`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `math`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `proof`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `tabular`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `std-ja`, registry = `default`, requirement = `^0.0.1` |),
-  ],
-|)]
 use package open Stdlib
-use package open Stdlib.Pervasives
+use package open Stdlib.Logo
 use package open Math
 use package open Proof
 use package open Tabular
@@ -26,6 +7,24 @@ use package open StdJa
 
 let math ctx \overwrite mf ma mb =
   read-math ctx ${#mf\sqbracket{#ma \mapsto #mb}}
+in
+let math-space =
+  embed-inline-to-math MathOrd (inline-skip 30pt)
+in
+let math ctx \and-also =
+  math-space
+in
+let math ctx \tyjd tyenv tm ty =
+  read-math ctx ${#tyenv \vdash #tm \colon-rel #ty}
+in
+let math ctx \synteq =
+  read-math ctx ${\equiv}
+in
+let math ctx \dot-punct =
+  math-char ctx MathPunct `.`
+in
+let math ctx \tmabstyped var ty body =
+  read-math ctx ${\lambda #var \colon-rel #ty \dot-punct #body}
 in
 
 document ?(
@@ -41,11 +40,11 @@ document ?(
     Italics correction and kerning:
       ${\paren{F^n} \paren{F} = \paren{G \frac{M m}{R^2}}^{n + 1}},
 
-    Big math: ${\paren{\frac{\paren{\frac{A}{B} + C}}{D^{\paren{n - 1}}}}_2},\fil;
+    Big math: ${\paren{\frac{\paren{\frac{A}{B} + C}}{D^{\paren{n - 1}}}}_2},\Inline.fil;
 
     parentheses: ${\paren{\paren{\paren{A} + B} + C}}, ${\brace{\brace{\brace{A} + B} + C}},
 
-    radical: ${2 \sqrt{3} + \frac{2}{\sqrt{5}} + \frac{1}{\sqrt{x^2 + 1}}}.\fil;
+    radical: ${2 \sqrt{3} + \frac{2}{\sqrt{5}} + \frac{1}{\sqrt{x^2 + 1}}}.\Inline.fil;
 
     The solution of the equation ${a x^2 + b x + c = 0} as to ${x} is
       ${x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}}.
@@ -86,7 +85,7 @@ document ?(
       bold Fraktur:  ${\math-style!(MathBoldFraktur ){#test}},
       double struck: ${\math-style!(MathDoubleStruck){#test}}.
     });
-  +p {Typing rule is defined as follows:}
+  +p {Typing rules are defined as follows:}
   +math(${
     \derive{|\paren{\app{\Gamma}{x} \synteq \tau}|}{
       \tyjd{\Gamma}{x}{\tau}
@@ -113,6 +112,6 @@ document ?(
     \tabular(fun cellf multif empty -> [
       [multif 2 1 {The}, cellf {quick}, cellf {brown}, multif 1 2 {fox jumps over}, empty,],
       [empty, multif 1 2 {the}, empty, cellf {lazy}, cellf {dog},],
-    ])(fun xs ys -> Gr.empty);
+    ])(fun xs ys -> Graphics.empty);
   }
 >

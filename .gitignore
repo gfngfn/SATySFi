@@ -5,3 +5,7 @@
 /temp/latinmodern-math-1959/
 /temp/*.zip
 /temp/tarballs/
+*.pdf
+*.satysfi-aux.yaml
+/saphe
+/satysfi

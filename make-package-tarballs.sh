@@ -9,7 +9,7 @@ for FILE in $(find lib-satysfi -name \*.ttf -or -name \*.otf | grep '^lib-satysf
 done
 
 mkdir -p "${TARGET_DIR}"
-for FILE in $(find lib-satysfi -name satysfi.yaml); do
+for FILE in $(find lib-satysfi -name saphe.yaml); do
     VERSIONED_DIR="$(dirname "${FILE}")"
     PACKAGE_DIR="$(dirname "${VERSIONED_DIR}")"
     VERSIONED_NAME="$(basename "${VERSIONED_DIR}")"
@@ -17,7 +17,7 @@ for FILE in $(find lib-satysfi -name satysfi.yaml); do
     ABS_TARGET="${REPO_ROOT}/${TARGET_DIR}/${VERSIONED_NAME}.tar.gz"
 
     echo "Compressing ${VERSIONED_NAME} at ${PACKAGE_DIR} to ${ABS_TARGET} ..."
-    (cd "${PACKAGE_DIR}" && tar -czf "${ABS_TARGET}" "${VERSIONED_NAME}")
+    (cd "${PACKAGE_DIR}" && tar -czf "${ABS_TARGET}" --exclude "*expected" "${VERSIONED_NAME}")
     echo "Checksum:"
     md5sum "${ABS_TARGET}"
 done

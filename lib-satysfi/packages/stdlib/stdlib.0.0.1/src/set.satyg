@@ -1,0 +1,59 @@
+use open Basic
+use List
+use Map
+
+module Set :> sig
+  module Make : (Elem : Ord) -> sig
+    type t :: o
+    val empty : t
+    val add : Elem.t -> t -> t
+    val remove : Elem.t -> t -> t
+    val is-member : Elem.t -> t -> bool
+    val fold 'a : ('a -> Elem.t -> 'a) -> 'a -> t -> 'a
+    val fold-back 'a : ('a -> Elem.t -> 'a) -> 'a -> t -> 'a
+    val to-list : t -> list Elem.t
+    val to-list-reversed : t -> list Elem.t
+    val from-list : list Elem.t -> t
+  end
+end = struct
+
+  module Make = fun(Elem : Ord) -> struct
+
+    module Impl = Map.Make Elem
+
+    type t = Impl.t unit
+
+    val empty =
+      Impl.empty
+
+    val add e =
+      Impl.add e ()
+
+    val remove e =
+      Impl.remove e
+
+    val is-member e s =
+      match Impl.find e s with
+      | None    -> false
+      | Some(_) -> true
+      end
+
+    val fold f acc s =
+      Impl.fold (fun acc e () -> f acc e) acc s
+
+    val fold-back f acc s =
+      Impl.fold-back (fun acc e () -> f acc e) acc s
+
+    val to-list s =
+      Impl.fold-back (fun acc e () -> e :: acc) [] s
+
+    val to-list-reversed s =
+      Impl.fold (fun acc e () -> e :: acc) [] s
+
+    % TODO: more efficient implementation
+    val from-list es =
+      Impl.from-list (List.map (fun e -> (e, ())) es)
+
+  end
+
+end

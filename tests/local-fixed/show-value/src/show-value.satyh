@@ -1,0 +1,6 @@
+use package open Stdlib
+
+module ShowValue = struct
+  val inline \int-sum ns =
+    embed-string (arabic (List.fold (+) 0 ns))
+end

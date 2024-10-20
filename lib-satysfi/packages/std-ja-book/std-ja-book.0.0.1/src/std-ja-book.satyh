@@ -4,6 +4,9 @@ use package Annot
 use package Code
 use package FootnoteScheme
 
+use package HyphEnglish
+use package Unidata
+
 use package FontJunicode
 use package FontIpaEx
 use package FontLatinModern
@@ -19,9 +22,9 @@ module StdJaBook :> sig
       paper-size       : length * length,
       text-width       : length,
       text-height      : length,
-      text-origin      : Pervasives.point, %- TODO: remove this by using 'open'
-      header-origin    : Pervasives.point,
-      footer-origin    : Pervasives.point,
+      text-origin      : point,
+      header-origin    : point,
+      footer-origin    : point,
       header-width     : length,
       footer-width     : length,
     ) (|
@@ -55,7 +58,6 @@ end = struct
     | TOCElementSection    of string * inline-text
     | TOCElementSubsection of string * inline-text
 
-
   val generate-fresh-label =
     let mutable count <- 0 in
       (fun () -> (
@@ -63,9 +65,7 @@ end = struct
           `generated:` ^ (arabic (!count))
       ))
 
-
   val no-pads = (0pt, 0pt, 0pt, 0pt)
-
 
   val inline ctx \ref key =
     let opt = get-cross-reference (key ^ `:num`) in
@@ -77,7 +77,6 @@ end = struct
     in
     script-guard Latin (inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it))
 
-
   val inline ctx \ref-page key =
     let opt = get-cross-reference (key ^ `:page`) in
     let it =
@@ -87,7 +86,6 @@ end = struct
       end
     in
     inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
-
 
   val font-size-normal  = 12pt
   val font-size-title   = 32pt
@@ -119,19 +117,18 @@ end = struct
   val font-cjk-mincho   = (FontIpaEx.mincho    , font-ratio-cjk  , 0.)
   val font-cjk-gothic   = (FontIpaEx.gothic    , font-ratio-cjk  , 0.)
 
-
   val set-latin-font font ctx =
     ctx |> set-font Latin font
-
 
   val set-cjk-font font ctx =
     ctx |> set-font HanIdeographic font
         |> set-font Kana           font
 
-
   val get-standard-context wid =
     get-initial-context wid (command \Math.math)
-      |> set-code-text-command (command \Code.code)
+      |> set-code-text-command (command \Code.Default.code)
+      |> set-hyphenation-dictionary HyphEnglish.hyphenation
+      |> set-unicode-char-database Unidata.unidata
       |> set-dominant-wide-script Kana
       |> set-language Kana Japanese
       |> set-language HanIdeographic Japanese
@@ -144,19 +141,15 @@ end = struct
       |> set-math-font FontLatinModernMath.main
       |> set-hyphen-penalty 100
 
-
   val mutable ref-float-boxes <- []
-
 
   val height-of-float-boxes pageno =
 %    let () = display-message `get height` in
-    (!ref-float-boxes) |> List.fold-left (fun h (pn, bb) -> (
+    (!ref-float-boxes) |> List.fold (fun h (pn, bb) -> (
       if pn < pageno then h +' (get-natural-length bb) else h
     )) 0pt
 
-
   val mutable ref-figure <- 0
-
 
   val inline ctx \figure ?(label = labelopt) caption inner =
     let () = ref-figure <- !ref-figure + 1 in
@@ -171,7 +164,7 @@ end = struct
     let ds =
       match labelopt with
       | Some(label) -> Annot.register-location-frame label
-      | None        -> let d (_, _) _ _ _ = Gr.empty in (d, d, d, d)
+      | None        -> VDecoSet.empty
       end
     in
     let bb-inner =
@@ -180,11 +173,10 @@ end = struct
           +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#it-num; #caption;} ++ inline-fil)
       ))
     in
-      hook-page-break (fun pbinfo _ -> (
-%        let () = display-message (`register` ^ (arabic pbinfo#page-number)) in
-        ref-float-boxes <- (pbinfo#page-number, bb-inner) :: !ref-float-boxes
-      ))
-
+    hook-page-break (fun pbinfo _ -> (
+%      let () = display-message (`register` ^ (arabic pbinfo#page-number)) in
+      ref-float-boxes <- (pbinfo#page-number, bb-inner) :: !ref-float-boxes
+    ))
 
 val title-deco =
     let pads = (5pt, 5pt, 10pt, 10pt) in
@@ -254,33 +246,29 @@ val title-deco =
 %        if get-text-width ctx <' Pervasives.get-natural-width ib-title then
 %          Pervasives.form-paragraph ctx-title (ib-title ++ inline-fil)
 %        else
-          Pervasives.form-paragraph (ctx-title |> set-paragraph-margin 12pt 0pt)
+          Block.form-paragraph (ctx-title |> set-paragraph-margin 12pt 0pt)
             (inline-fil ++ ib-title ++ inline-fil)
       in
       let bb-line =
-        Pervasives.form-paragraph (ctx |> set-paragraph-margin title-line-margin title-line-margin)
+        Block.form-paragraph (ctx |> set-paragraph-margin title-line-margin title-line-margin)
           (ib-line ++ inline-fil)
       in
-      let bb-author = Pervasives.form-paragraph ctx-author (inline-fil ++ ib-author) in
-        bb-title +++ bb-line +++ bb-author
+      let bb-author = Block.form-paragraph ctx-author (inline-fil ++ ib-author) in
+      bb-title +++ bb-line +++ bb-author
     ))
-
 
   val make-section-title ctx =
     ctx |> set-font-size font-size-section
         |> set-font Latin font-latin-sans
         |> set-cjk-font font-cjk-gothic
 
-
   val make-subsection-title ctx =
     ctx |> set-font-size font-size-subsection
         |> set-font Latin font-latin-sans
         |> set-cjk-font font-cjk-gothic
 
-
   val mutable toc-acc-ref <- []
   val mutable outline-ref <- []
-
 
   val get-cross-reference-number label =
     match get-cross-reference (label ^ `:num`) with
@@ -288,13 +276,11 @@ val title-deco =
     | Some(s) -> s
     end
 
-
   val get-cross-reference-page label =
     match get-cross-reference (label ^ `:page`) with
     | None    -> `?`
     | Some(s) -> s
     end
-
 
   val section-heading ctx ib-heading =
     let wid = get-text-width ctx in
@@ -305,8 +291,8 @@ val title-deco =
       line-break true false (ctx |> set-paragraph-margin section-top-margin 0pt)
         (inline-graphics wid h 0pt (fun (x, y) ->
           unite-graphics [
-            stroke th1 color (Gr.line (x, y +' h) (x +' wid, y +' h)),
-            stroke th2 color (Gr.line (x, y) (x +' wid, y)),
+            stroke th1 color (Path.line (x, y +' h) (x +' wid, y +' h)),
+            stroke th2 color (Path.line (x, y) (x +' wid, y)),
           ]))
     +++
       line-break false false (ctx |> set-paragraph-margin section-top-padding section-bottom-padding)
@@ -315,28 +301,25 @@ val title-deco =
       line-break false false (ctx |> set-paragraph-margin 0pt section-bottom-margin)
         (inline-graphics wid h 0pt (fun (x, y) ->
           unite-graphics [
-            stroke th2 color (Gr.line (x, y +' h) (x +' wid, y +' h)),
-            stroke th1 color (Gr.line (x, y) (x +' wid, y)),
+            stroke th2 color (Path.line (x, y +' h) (x +' wid, y +' h)),
+            stroke th1 color (Path.line (x, y) (x +' wid, y)),
           ]))
 
 
   val inline ctx \dummy it =
     let ib = read-inline (ctx |> set-text-color Color.white) it in
-    let w = Pervasives.get-natural-width ib in
+    let w = Inline.get-natural-advance ib in
     ib ++ inline-skip (0pt -' w)
-
 
   val rec repeat-inline n ib =
     if n <= 0 then inline-nil else
       ib ++ (repeat-inline (n - 1) ib)
 
-
   val make-dots-line ctx w =
     let ib = read-inline ctx {.} ++ inline-skip 1pt in
-    let wdot = Pervasives.get-natural-width ib in
+    let wdot = Inline.get-natural-advance ib in
     let n = round (w /' wdot) in
     inline-fil ++ (repeat-inline n ib)
-
 
   val document
     ?(
@@ -399,7 +382,7 @@ val title-deco =
           read-inline (make-section-title ctx-doc) {目次} ++ inline-fil
         in
         let bb-toc-main =
-          (!toc-acc-ref) |> List.reverse |> List.fold-left (fun bbacc tocelem -> (
+          (!toc-acc-ref) |> List.reverse |> List.fold (fun bbacc tocelem -> (
             match tocelem with
             | TOCElementSection(label, title) ->
                 let it-num = embed-string (get-cross-reference-number label) in
@@ -407,7 +390,7 @@ val title-deco =
                 let ib-title = read-inline ctx-doc {#it-num;. #title;} ++ inline-skip 3pt in
                 let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
                 let ib-middle =
-                  let w = (get-text-width ctx-doc) -' (Pervasives.get-natural-width ib-title) -' (Pervasives.get-natural-width ib-page) in
+                  let w = (get-text-width ctx-doc) -' (Inline.get-natural-advance ib-title) -' (Inline.get-natural-advance ib-page) in
                     if w <' 0pt then inline-fil else
                       make-dots-line ctx-doc w
                 in
@@ -424,17 +407,19 @@ val title-deco =
                 in
                 let ib-page = inline-skip 3pt ++ read-inline ctx-doc it-page in
                 let ib-middle =
-                  let w = (get-text-width ctx-doc) -' (Pervasives.get-natural-width ib-indent)
-                    -' (Pervasives.get-natural-width ib-title) -' (Pervasives.get-natural-width ib-page) in
-                    if w <' 0pt then inline-fil else
-                      make-dots-line ctx-doc w
+                  let w =
+                    (get-text-width ctx-doc) -' (Inline.get-natural-advance ib-indent)
+                      -' (Inline.get-natural-advance ib-title) -' (Inline.get-natural-advance ib-page)
+                  in
+                  if w <' 0pt then inline-fil else
+                    make-dots-line ctx-doc w
                 in
-                  bbacc +++ line-break true true ctx-doc
-                    (ib-indent ++ (inline-frame-breakable no-pads (Annot.link-to-location-frame label None) (ib-title ++ ib-middle ++ ib-page)))
+                bbacc +++ line-break true true ctx-doc
+                  (ib-indent ++ (inline-frame-breakable no-pads (Annot.link-to-location-frame label None) (ib-title ++ ib-middle ++ ib-page)))
             end
           )) block-nil
         in
-          (section-heading ctx-doc ib-toc-title) +++ bb-toc-main
+        (section-heading ctx-doc ib-toc-title) +++ bb-toc-main
     in
 
     % -- page settings --
@@ -462,7 +447,7 @@ val title-deco =
         in
 %        let () = display-message `insert` in
         let (bb-float-boxes, acc) =
-          (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
+          (!ref-float-boxes) |> List.fold (fun (bbacc, acc) elem -> (
             let (pn, bb) = elem in
               if pn < pageno then
                 let bbs =
@@ -476,11 +461,11 @@ val title-deco =
           )) (block-nil, [])
         in
         let () = ref-float-boxes <- acc in
-          line-break true true ctx ib-text
-            +++ line-break true true (ctx |> set-paragraph-margin header-line-margin-top header-line-margin-bottom)
-              ((inline-graphics hdrwid thickness 0pt
-                (fun (x, y) -> fill Color.black (Gr.rectangle (x, y) (x +' hdrwid, y +' thickness)))) ++ inline-fil)
-            +++ bb-float-boxes
+        line-break true true ctx ib-text
+          +++ line-break true true (ctx |> set-paragraph-margin header-line-margin-top header-line-margin-bottom)
+            ((inline-graphics hdrwid thickness 0pt
+              (fun (x, y) -> fill Color.black (Path.rectangle (x, y) (x +' hdrwid, y +' thickness)))) ++ inline-fil)
+          +++ bb-float-boxes
       in
       let footer =
         if show-pages then
@@ -500,18 +485,15 @@ val title-deco =
     in
     let doc = page-break page pagecontf pagepartsf (bb-title +++ bb-toc +++ bb-main) in
     let () = register-outline (List.reverse !outline-ref) in
-      doc
-
+    doc
 
   val mutable needs-indentation-ref <- true
 
   val mutable num-section <- 0
   val mutable num-subsection <- 0
 
-
   val quad-indent ctx =
     inline-skip (get-font-size ctx)
-
 
   val block ctx +p inner =
     let needs-indentation =
@@ -526,14 +508,12 @@ val title-deco =
       else
         ib-inner ++ inline-fil
     in
-      Pervasives.form-paragraph ctx br-parag
-
+    Block.form-paragraph ctx br-parag
 
   val block ctx +pn inner =
     let () = needs-indentation-ref <- true in
     let ib-inner = read-inline ctx inner in
-      Pervasives.form-paragraph ctx (ib-inner ++ inline-fil)
-
+    Block.form-paragraph ctx (ib-inner ++ inline-fil)
 
   val section-scheme ctx label title outline-title-opt inner =
     let ctx-title = make-section-title ctx in
@@ -558,8 +538,7 @@ val title-deco =
       section-heading ctx ib
     in
     let bb-inner = read-block ctx inner in
-      bb-title +++ bb-inner
-
+    bb-title +++ bb-inner
 
   val subsection-scheme ctx label title outline-title-opt inner =
     let () = num-subsection <- !num-subsection + 1 in
@@ -581,8 +560,7 @@ val title-deco =
           (ib-num ++ (inline-skip 10pt) ++ ib-title ++ (inline-fil)))
     in
     let bb-inner = read-block ctx inner in
-      bb-title +++ bb-inner
-
+    bb-title +++ bb-inner
 
   val block ctx +section ?(label = labelopt, outline-title = outline-title-opt) title inner =
     let label =
@@ -593,7 +571,6 @@ val title-deco =
     in
     section-scheme ctx label title outline-title-opt inner
 
-
   val block ctx +subsection ?(label = labelopt, outline-title = outline-title-opt) title inner =
     let label =
       match labelopt with
@@ -601,8 +578,7 @@ val title-deco =
       | Some(label) -> label
       end
     in
-      subsection-scheme ctx label title outline-title-opt inner
-
+    subsection-scheme ctx label title outline-title-opt inner
 
   val inline ctx \emph inner =
     let ctx-emph =
@@ -610,8 +586,7 @@ val title-deco =
           |> set-cjk-font font-cjk-gothic
           |> set-text-color (CMYK(1., 0., 0., 0.))
     in
-      read-inline ctx-emph inner
-
+    read-inline ctx-emph inner
 
   val inline ctx \footnote it =
     let size = get-font-size ctx in
@@ -631,8 +606,8 @@ val title-deco =
             |> set-paragraph-margin (size *' 0.5) (size *' 0.5)
           %temporary
       in
-        line-break false false ctx (read-inline ctx {#it-num; #it;} ++ inline-fil)
+      line-break false false ctx (read-inline ctx {#it-num; #it;} ++ inline-fil)
     in
-      FootnoteScheme.main ctx ibf bbf
+    FootnoteScheme.main ctx ibf bbf
 
 end

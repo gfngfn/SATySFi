@@ -1,11 +1,32 @@
 
-let build
+open LoggingUtil
+
+
+let build_package
   fpath_in
-  fpath_out_opt
-  config_paths_str_opt
+  fpath_deps
+  text_mode_formats_str_opt
+  show_full_path
+  verbosity
+=
+  Main.build_package
+    ~fpath_in
+    ~fpath_deps
+    ~text_mode_formats_str_opt
+    ~show_full_path
+    ~verbosity
+
+
+let build_document
+  fpath_in
+  fpath_out
+  fpath_dump
+  fpath_deps
   text_mode_formats_str_opt
   page_number_limit
+  max_repeats
   show_full_path
+  verbosity
   debug_show_bbox
   debug_show_space
   debug_show_block_bbox
@@ -13,15 +34,17 @@ let build
   debug_show_overfull
   type_check_only
   bytecomp
-  no_default_config
 =
-  Main.build
+  Main.build_document
     ~fpath_in
-    ~fpath_out_opt
-    ~config_paths_str_opt
+    ~fpath_out
+    ~fpath_dump
+    ~fpath_deps
     ~text_mode_formats_str_opt
     ~page_number_limit
+    ~max_repeats
     ~show_full_path
+    ~verbosity
     ~debug_show_bbox
     ~debug_show_space
     ~debug_show_block_bbox
@@ -29,35 +52,21 @@ let build
     ~debug_show_overfull
     ~type_check_only
     ~bytecomp
-    ~no_default_config
 
 
-let test
+let test_package
   fpath_in
-  config_paths_str_opt
+  fpath_deps
   text_mode_formats_str_opt
   show_full_path
-  no_default_config
+  verbosity
 =
-  Main.test
+  Main.test_package
     ~fpath_in
-    ~config_paths_str_opt
+    ~fpath_deps
     ~text_mode_formats_str_opt
     ~show_full_path
-    ~no_default_config
-
-
-let solve
-  fpath_in
-  show_full_path
-  config_paths_str_opt
-  no_default_config
-=
-  Main.solve
-    ~fpath_in
-    ~show_full_path
-    ~config_paths_str_opt
-    ~no_default_config
+    ~verbosity
 
 
 let arg_in : string Cmdliner.Term.t =
@@ -65,21 +74,27 @@ let arg_in : string Cmdliner.Term.t =
   Arg.(required (pos 0 (some file) None (info [])))
 
 
-let flag_output : (string option) Cmdliner.Term.t =
+let flag_output : string Cmdliner.Term.t =
   let open Cmdliner in
-  let doc = "Specify output path." in
-  Arg.(value (opt (some string) None (info [ "o"; "output" ] ~docv:"OUTPUT" ~doc)))
+  let doc = "Specify an output path" in
+  Arg.(required (opt (some string) None (info [ "o"; "output" ] ~docv:"OUTPUT" ~doc)))
 
 
-let flag_config =
+let flag_dump : string Cmdliner.Term.t =
   let open Cmdliner in
-  let doc = "Add colon-separated paths to configuration search path" in
-  Arg.(value (opt (some string) None (info [ "C"; "config" ] ~docv:"PATHS" ~doc)))
+  let doc = "Specify a dump file path" in
+  Arg.(required (opt (some string) None (info [ "dump" ] ~docv:"DUMP" ~doc)))
+
+
+let flag_deps : string Cmdliner.Term.t =
+  let open Cmdliner in
+  let doc = "Specify a deps config path" in
+  Arg.(required (opt (some string) None (info [ "deps" ] ~docv:"DEPS" ~doc)))
 
 
 let flag_text_mode =
   let open Cmdliner in
-  let doc = "Set text mode" in
+  let doc = "Set the text-generating mode" in
   Arg.(value (opt (some string) None (info [ "text-mode" ] ~docv:"FORMATS" ~doc)))
 
 
@@ -87,6 +102,12 @@ let flag_page_number_limit : int Cmdliner.Term.t =
   let open Cmdliner in
   let doc = "Set the page number limit (default: 10000)" in
   Arg.(value (opt int 10000 (info [ "page-number-limit" ] ~docv:"INT" ~doc)))
+
+
+let flag_max_repeats : int Cmdliner.Term.t =
+  let open Cmdliner in
+  let doc = "Set the limit of iteration for resolving cross-references (default: 4)" in
+  Arg.(value (opt int 4 (info [ "max-repeats" ] ~docv:"INT" ~doc)))
 
 
 let make_boolean_flag_spec ~(flags : string list) ~(doc : string) : bool Cmdliner.Term.t =
@@ -98,6 +119,13 @@ let flag_full_path =
   make_boolean_flag_spec
     ~flags:[ "full-path" ]
     ~doc:"Displays paths in full-path style"
+
+
+let flag_verbosity =
+  let open Cmdliner in
+  let verbose = (Verbose, Arg.info [ "verbose" ] ~doc:"Make logs verbose") in
+  let quiet = (Quiet, Arg.info [ "quiet" ] ~doc:"Disable logs other than errors and warnings") in
+  Arg.(value (vflag NormalVerbosity [ verbose; quiet ]))
 
 
 let flag_debug_show_bbox =
@@ -142,22 +170,19 @@ let flag_bytecomp =
     ~doc:"Use bytecode compiler"
 
 
-let flag_no_default_config =
-  make_boolean_flag_spec
-    ~flags:[ "no-default-config" ]
-    ~doc:"Does not use default configuration search path"
-
-
-let command_build =
+let command_build_document =
   let open Cmdliner in
-  let term : unit Term.t =
-    Term.(const build
+  Cmd.v (Cmd.info "document")
+    Term.(const build_document
       $ arg_in
       $ flag_output
-      $ flag_config
+      $ flag_dump
+      $ flag_deps
       $ flag_text_mode
       $ flag_page_number_limit
+      $ flag_max_repeats
       $ flag_full_path
+      $ flag_verbosity
       $ flag_debug_show_bbox
       $ flag_debug_show_space
       $ flag_debug_show_block_bbox
@@ -165,53 +190,50 @@ let command_build =
       $ flag_debug_show_overfull
       $ flag_type_check_only
       $ flag_bytecomp
-      $ flag_no_default_config
     )
-  in
-  let info : Cmd.info =
-    Cmd.info "build"
-  in
-  Cmd.v info term
+
+
+let command_build_package =
+  let open Cmdliner in
+  Cmd.v (Cmd.info "package")
+    Term.(const build_package
+      $ arg_in
+      $ flag_deps
+      $ flag_text_mode
+      $ flag_full_path
+      $ flag_verbosity
+    )
+
+
+let command_build =
+  let open Cmdliner in
+  Cmd.group (Cmd.info "build") [
+    command_build_package;
+    command_build_document;
+  ]
+
+
+let command_test_package =
+  let open Cmdliner in
+  Cmd.v (Cmd.info "package")
+    Term.(const test_package
+      $ arg_in
+      $ flag_deps
+      $ flag_text_mode
+      $ flag_full_path
+      $ flag_verbosity
+    )
 
 
 let command_test =
   let open Cmdliner in
-  let term : unit Term.t =
-    Term.(const test
-      $ arg_in
-      $ flag_config
-      $ flag_text_mode
-      $ flag_full_path
-      $ flag_no_default_config
-    )
-  in
-  let info : Cmd.info =
-    Cmd.info "test"
-  in
-  Cmd.v info term
-
-
-let command_solve =
-  let open Cmdliner in
-  let term : unit Term.t =
-    Term.(const solve
-      $ arg_in
-      $ flag_full_path
-      $ flag_config
-      $ flag_no_default_config
-    )
-  in
-  let info : Cmd.info =
-    Cmd.info "solve"
-  in
-  Cmd.v info term
+  Cmd.group (Cmd.info "test") [
+    command_test_package;
+  ]
 
 
 let () =
   let open Cmdliner in
-  let term : unit Term.t =
-    Term.(ret (const (`Error(true, "No subcommand specified."))))
-  in
   let info : Cmd.info =
     Cmd.info ~version:Main.version "satysfi"
   in
@@ -219,7 +241,6 @@ let () =
     [
       command_build;
       command_test;
-      command_solve;
     ]
   in
-  Stdlib.exit (Cmd.eval (Cmd.group ~default:term info subcommands))
+  Stdlib.exit (Cmd.eval (Cmd.group info subcommands))

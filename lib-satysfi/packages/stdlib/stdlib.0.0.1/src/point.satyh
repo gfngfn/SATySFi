@@ -1,0 +1,41 @@
+use open Basic
+use Float
+use Length
+use Pair
+use Vector
+
+module Point :> sig
+  type t = point
+  val ~lift : point -> code point
+  val persistent ~get-x : point -> length
+  val persistent ~get-y : point -> length
+  val persistent ~add : point -> vector -> point
+  val persistent ~subtract : point -> point -> vector
+  val persistent ~atan2 : point -> point -> float
+  val persistent ~dividing-point : float -> point -> point -> point
+end = struct
+
+  type t = point
+
+  val ~lift =
+    Vector.lift
+
+  val persistent ~get-x =
+    Vector.get-x
+
+  val persistent ~get-y =
+    Vector.get-y
+
+  val persistent ~add =
+    Vector.add
+
+  val persistent ~subtract =
+    Vector.subtract
+
+  val persistent ~atan2 (x1, y1) (x2, y2) =
+    Length.atan2 (y2 -' y1) (x2 -' x1)
+
+  val persistent ~dividing-point t pt1 pt2 =
+    Vector.add (Vector.scale (1. -. t) pt1) (Vector.scale t pt2)
+
+end
