@@ -70,6 +70,9 @@ module Stdlib :> sig
     val persistent ~split-into-grapheme-clusters : string -> list string
     val persistent ~empty : string
     val persistent ~split-into-lines : string -> list (int * string)
+    val persistent ~concat : string -> list string -> string
+    val persistent ~chop-prefix : string -> string -> option string
+    val persistent ~chop-suffix : string -> string -> option string
   end
   module Ordering : sig
     type t = ordering
