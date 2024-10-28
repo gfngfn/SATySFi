@@ -18,9 +18,9 @@ module ListTest = struct
     let mutable r <- [3] in
     let inputs = [1, 4, 1, 5, 9, 2] in
     let () =
-      List.iter (fun n -> (
+      List.iter (fun n ->
         r <- n :: !r
-      )) inputs
+      ) inputs
     in
     let got = !r in
     let expected = [2, 9, 5, 1, 4, 1, 3] in
@@ -28,10 +28,10 @@ module ListTest = struct
 
   #[test]
   val compare-test () =
-    List.iter (fun r -> (
+    List.iter (fun r ->
       let got = List.compare Int.compare r#input1 r#input2 in
       assert-equal ?(title = r#title) eq-ordering r#expected got
-    )) [
+    ) [
       (|
         title = `prefix is smaller 1`,
         input1 = [],
@@ -60,10 +60,10 @@ module ListTest = struct
 
   #[test]
   val show-test () =
-    List.iter (fun r -> (
+    List.iter (fun r ->
       let got = List.show arabic r#input in
       assert-equal ?(title = r#title) Equality.string r#expected got
-    )) [
+    ) [
       (|
         title = `empty`,
         input = [],
@@ -109,11 +109,11 @@ module ListTest = struct
     let input = [`a`, `b`, `c`, `d`] in
     let expected = [`cdY`, `bcd`, `abc`, `Xab`] in
     let got =
-      List.fold-adjacent (fun acc s prev next -> (
+      List.fold-adjacent (fun acc s prev next ->
         let s-prev = Option.from `X` prev in
         let s-next = Option.from `Y` next in
         (s-prev ^ s ^ s-next) :: acc
-      )) [] input
+      ) [] input
     in
     assert-equal Equality.(list string) expected got
 
@@ -122,11 +122,11 @@ module ListTest = struct
     let input = [`a`, `b`, `c`, `d`] in
     let expected = [`3cdY`, `2bcd`, `1abc`, `0Xab`] in
     let got =
-      List.fold-indexed-adjacent (fun acc i s prev next -> (
+      List.fold-indexed-adjacent (fun acc i s prev next ->
         let s-prev = Option.from `X` prev in
         let s-next = Option.from `Y` next in
         (arabic i ^ s-prev ^ s ^ s-next) :: acc
-      )) [] input
+      ) [] input
     in
     assert-equal Equality.(list string) expected got
 
@@ -149,11 +149,11 @@ module ListTest = struct
     let input = [3, 1, 4, 1, 5, 9, 2] in
     let expected = [`X31`, `314`, `141`, `415`, `159`, `592`, `92Y`] in
     let got =
-      List.map-adjacent (fun n prev next -> (
+      List.map-adjacent (fun n prev next ->
         let s-prev = Option.from `X` (Option.map arabic prev) in
         let s-next = Option.from `Y` (Option.map arabic next) in
         s-prev ^ arabic n ^ s-next
-      )) input
+      ) input
     in
     assert-equal Equality.(list string) expected got
 

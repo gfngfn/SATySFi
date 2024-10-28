@@ -197,10 +197,10 @@ end = struct
             end
         end
       in
-      (fun mp -> (
+      (fun mp ->
         let (_, mp-new) = aux mp in
         mp-new
-      ))
+      )
 
     val trim-minimum =
       let rec aux n =
@@ -214,12 +214,12 @@ end = struct
             (kv-min, rebalance tL n#key n#data n#right)
         end
       in
-      (fun t -> (
+      (fun t ->
         match t with
         | Empty   -> None
         | Node(n) -> Some(aux n)
         end
-      ))
+      )
 
     % Merges two trees `t1` and `t2`,
     % where the maximum key in `t1` is less than the minimum key in `t2`
@@ -256,12 +256,12 @@ end = struct
             end
         end
       in
-      (fun mp -> (
+      (fun mp ->
         match aux mp with
         | None          -> mp
         | Some(mp-new) -> mp-new
         end
-      ))
+      )
 
     val find k =
       let rec aux mp =
@@ -422,7 +422,7 @@ end = struct
 
     #[test]
     val add-test () =
-      List.iter (fun r -> (
+      List.iter (fun r ->
         let title = r#title in
         let input = r#input in
         let expected = r#expected in
@@ -431,7 +431,7 @@ end = struct
         let got = r#operation r#input in
         let () = assert ?(title = title ^ `: output well-formedness`) (is-well-formed got) in
         assert-equal ?(title = title) (eq-internal Equality.string) expected got
-      )) [
+      ) [
         (|
           title = `added to the left`,
           input =
