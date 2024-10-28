@@ -1,5 +1,6 @@
 use open Basic
 use Int
+use Option
 use List
 
 module String :> sig
