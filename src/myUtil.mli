@@ -27,8 +27,6 @@ val list_some : ('a option) list -> 'a list
 
 val list_fold_adjacent : ('a -> 'b -> 'b option -> 'b option -> 'a) -> 'a -> 'b list -> 'a
 
-val option_map : ('a -> 'b) -> 'a option -> 'b option
-
 val pickup : 'a list -> ('a -> bool) -> 'b -> ('a, 'b) result
 
 module OptionMonad : sig
@@ -37,9 +35,13 @@ module OptionMonad : sig
 end
 
 module ResultMonad : sig
-  val ( >>= ) : ('a, 'c) result -> ('a -> ('b, 'c) result) -> ('b, 'c) result
-  val return : 'a -> ('a, 'b) result
-  val err : 'b -> ('a, 'b) result
+  val ( >>= ) : ('a, 'e) result -> ('a -> ('b, 'e) result) -> ('b, 'e) result
+  val return : 'a -> ('a, 'e) result
+  val err : 'e -> ('a, 'e) result
+  val ( let* ) : ('a, 'e) result -> ('a -> ('b, 'e) result) -> ('b, 'e) result
+  val foldM : ('a -> 'b -> ('a, 'e) result) -> 'a -> 'b list -> ('a, 'e) result
+  val mapM : ('a -> ('b, 'e) result) -> 'a list -> ('b list, 'e) result
+  val optionM : ('a -> ('b, 'e) result) -> 'a option -> ('b option, 'e) result
 end
 
 module EscapeMonad : sig

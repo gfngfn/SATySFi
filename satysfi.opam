@@ -11,19 +11,24 @@ bug-reports: "https://github.com/gfngfn/SATySFi/issues"
 depends: [
   "dune" {>= "3.16"}
   "ocaml" {>= "4.12.0" & < "5.0.0"}
+  "alcotest" {with-test & >= "1.4.0"}
   "batteries" {>= "3.6.0" & < "4.0"}
   "camlimages" {>= "5.0.1" & < "5.0.5"}
   "camlpdf" {= "2.3.1+satysfi"}
+  "cmdliner" {>= "1.1.1" & < "2.0"}
   "core_kernel" {>= "v0.15" & < "v0.18"}
   "cppo" {>= "1.6.4" & < "1.7"}
   "dune-build-info"
   "menhir" {>= "20231231"}
   "menhirLib" {>= "20231231"}
+  "ocamlgraph" {>= "2.0.0" & < "3.0"}
   "omd" {>= "1.3.2" & < "2.0"}
   "otfed" {>= "0.3.2" & < "0.4"}
   "ppx_deriving" {>= "5.2.1" & < "6.0"}
   "re" {>= "1.10.4" & < "2.0"}
   "uutf" {>= "1.0.3" & < "2.0"}
+  "uunf" {>= "15.0.0" & < "16.0"}
+  "uuseg" {>= "15.0.0" & < "16.0"}
   "yojson-with-position" {= "1.4.2+satysfi"}
   "odoc" {with-doc}
 ]

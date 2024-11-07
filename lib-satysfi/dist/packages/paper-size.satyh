@@ -1,0 +1,18 @@
+module PaperSize = struct
+
+  val persistent ~a0 = (841mm, 1189mm)
+  val persistent ~a1 = (594mm, 841mm)
+  val persistent ~a2 = (420mm, 594mm)
+  val persistent ~a3 = (297mm, 420mm)
+  val persistent ~a4 = (210mm, 297mm)
+  val persistent ~a5 = (148mm, 210mm)
+  val persistent ~a6 = (105mm, 148mm)
+  val persistent ~a7 = (74mm, 105mm)
+  val persistent ~a8 = (52mm, 74mm)
+  val persistent ~a9 = (37mm, 52mm)
+  val persistent ~a10 = (26mm, 37mm)
+
+  val persistent ~us-letter = (8.5inch, 11inch)
+  val persistent ~us-legal = (8.5inch, 14inch)
+
+end

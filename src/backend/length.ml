@@ -1,5 +1,5 @@
 
-type t = float  [@@deriving show]
+type t = float
 
 
 let zero = 0.
@@ -27,10 +27,11 @@ let to_pdf_point len = len
 
 let convert pdfunit flt =
   let dpi = 72. in  (* temporary; dpi *)
-    Pdfunits.convert dpi pdfunit Pdfunits.PdfPoint flt      
+    Pdfunits.convert dpi pdfunit Pdfunits.PdfPoint flt
 
 let of_centimeter = convert Pdfunits.Centimetre
 let of_millimeter = convert Pdfunits.Millimetre
 let of_inch       = convert Pdfunits.Inch
 
-let show = string_of_float
+let pp ppf len =
+  Format.fprintf ppf "%spt" (string_of_float len)

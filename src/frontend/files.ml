@@ -1,4 +1,3 @@
-open Types
 
 (* string -> string *)
 let string_of_file_in file_name_in =

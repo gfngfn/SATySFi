@@ -1,5 +1,5 @@
 
-let print_for_debug msg =
+let[@ocaml.warning "-27"] print_for_debug msg =
 (*
   print_endline msg;
 *)

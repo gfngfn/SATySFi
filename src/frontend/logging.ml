@@ -4,7 +4,7 @@ open MyUtil
 
 let show_path abspath =
   let pathstr = get_abs_path_string abspath in
-  if OptionState.show_full_path () then pathstr else Filename.basename pathstr
+  if OptionState.does_show_full_path () then pathstr else Filename.basename pathstr
 
 
 let begin_to_typecheck_file abspath_in =

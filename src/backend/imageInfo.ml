@@ -21,7 +21,7 @@ let add_image abspath =
 
 let get_xobject_dictionary pdfmain : Pdf.pdfobject =
   let keyval =
-    [] |> ImageHashTable.fold (fun _ (tag, bbox, imgvalue) acc ->
+    [] |> ImageHashTable.fold (fun _ (tag, _bbox, imgvalue) acc ->
       match imgvalue with
       | ImageHashTable.PDFImage(pdfext, page) ->
           let irxobj = LoadPdf.make_xobject pdfmain pdfext page in
