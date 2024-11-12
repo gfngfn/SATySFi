@@ -70,6 +70,9 @@ module Stdlib :> sig
     val persistent ~split-into-grapheme-clusters : string -> list string
     val persistent ~empty : string
     val persistent ~split-into-lines : string -> list (int * string)
+    val persistent ~concat : string -> list string -> string
+    val persistent ~chop-prefix : string -> string -> option string
+    val persistent ~chop-suffix : string -> string -> option string
   end
   module Ordering : sig
     type t = ordering
@@ -119,6 +122,8 @@ module Stdlib :> sig
     val persistent ~length 'a : list 'a -> int
     val persistent ~nth 'a : int -> list 'a -> option 'a
     val persistent ~is-empty 'a : list 'a -> bool
+    val persistent ~zip-exact 'a 'b : list 'a -> list 'b -> option (list ('a * 'b))
+    val persistent ~zip-shorter 'a 'b : list 'a -> list 'b -> list ('a * 'b)
   end
   module Pair : sig
     val ~lift 'a 'b : ('a -> code 'a) -> ('b -> code 'b) -> 'a * 'b -> code ('a * 'b)

@@ -99,14 +99,14 @@ end = struct
       |> close-with-line
 
   val poly-line pt-init pts =
-    pts |> List.fold (fun acc pt -> (
+    pts |> List.fold (fun acc pt ->
       acc |> line-to pt
-    )) (start-path pt-init) |> terminate-path
+    ) (start-path pt-init) |> terminate-path
 
   val polygon pt-init pts =
-    pts |> List.fold (fun acc pt -> (
+    pts |> List.fold (fun acc pt ->
       acc |> line-to pt
-    )) (start-path pt-init) |> close-with-line
+    ) (start-path pt-init) |> close-with-line
 
   val line pt1 pt2 =
     start-path pt1 |> line-to pt2 |> terminate-path
