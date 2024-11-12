@@ -1,0 +1,141 @@
+use open Basic
+use Length
+use List
+use Float
+
+module Path :> sig
+  val rectangle : point -> point -> path
+  val rectangle-round : length -> point -> point -> path
+  val rectangle-round-left : length -> point -> point -> path
+  val rectangle-round-left-lower : length -> point -> point -> path
+  val rectangle-round-left-upper : length -> point -> point -> path
+  val rectangle-round-right : length -> point -> point -> path
+  val poly-line : point -> list point -> path
+  val polygon : point -> list point -> path
+  val line : point -> point -> path
+  val circle : point -> length -> path
+  val linear-transform : float -> float -> float -> float -> path -> path
+  val shift : length * length -> path -> path
+  val rotate : point -> float -> path -> path
+  val scale : point -> float -> float -> path -> path
+  val get-bounding-box : path -> point * point
+end = struct
+
+  val rectangle (x1, y1) (x2, y2) =
+    start-path (x1, y1)
+      |> line-to (x1, y2)
+      |> line-to (x2, y2)
+      |> line-to (x2, y1)
+      |> close-with-line
+
+  val rectangle-round r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = Length.min xA xB in
+    let x2 = Length.max xA xB in
+    let y1 = Length.min yA yB in
+    let y2 = Length.max yA yB in
+    start-path                                 (x1, y1 +' r)
+      |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
+      |> line-to                               (x2 -' r, y1)
+      |> bezier-to (x2 -' t, y1) (x2, y1 +' t) (x2, y1 +' r)
+      |> line-to                               (x2, y2 -' r)
+      |> bezier-to (x2, y2 -' t) (x2 -' t, y2) (x2 -' r, y2)
+      |> line-to                               (x1 +' r, y2)
+      |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y2 -' r)
+      |> close-with-line
+
+  val rectangle-round-left r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = Length.min xA xB in
+    let x2 = Length.max xA xB in
+    let y1 = Length.min yA yB in
+    let y2 = Length.max yA yB in
+    start-path                                 (x1, y1 +' r)
+      |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
+      |> line-to                               (x2, y1)
+      |> line-to                               (x2, y2)
+      |> line-to                               (x1 +' r, y2)
+      |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y2 -' r)
+      |> close-with-line
+
+  val rectangle-round-left-lower r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = Length.min xA xB in
+    let x2 = Length.max xA xB in
+    let y1 = Length.min yA yB in
+    let y2 = Length.max yA yB in
+    start-path                                 (x1, y1 +' r)
+      |> bezier-to (x1, y1 +' t) (x1 +' t, y1) (x1 +' r, y1)
+      |> line-to                               (x2, y1)
+      |> line-to                               (x2, y2)
+      |> line-to                               (x1, y2)
+      |> close-with-line
+
+  val rectangle-round-left-upper r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = Length.min xA xB in
+    let x2 = Length.max xA xB in
+    let y1 = Length.min yA yB in
+    let y2 = Length.max yA yB in
+    start-path                                 (x1, y1)
+      |> line-to                               (x2, y1)
+      |> line-to                               (x2, y2)
+      |> line-to                               (x1 +' r, y2)
+      |> bezier-to (x1 +' t, y2) (x1, y2 -' t) (x1, y1 -' t)
+      |> close-with-line
+
+  val rectangle-round-right r (xA, yA) (xB, yB) =
+    let t = r *' 0.4 in
+    let x1 = Length.min xA xB in
+    let x2 = Length.max xA xB in
+    let y1 = Length.min yA yB in
+    let y2 = Length.max yA yB in
+    start-path                                 (x1, y1)
+      |> line-to                               (x2 -' r, y1)
+      |> bezier-to (x2 -' t, y1) (x2, y1 +' t) (x2, y1 +' r)
+      |> line-to                               (x2, y2 -' r)
+      |> bezier-to (x2, y2 -' t) (x2 -' t, y2) (x2 -' r, y2)
+      |> line-to                               (x1, y2)
+      |> close-with-line
+
+  val poly-line pt-init pts =
+    pts |> List.fold (fun acc pt ->
+      acc |> line-to pt
+    ) (start-path pt-init) |> terminate-path
+
+  val polygon pt-init pts =
+    pts |> List.fold (fun acc pt ->
+      acc |> line-to pt
+    ) (start-path pt-init) |> close-with-line
+
+  val line pt1 pt2 =
+    start-path pt1 |> line-to pt2 |> terminate-path
+
+  val circle (cx, cy) r =
+    let t = r *' 0.55228 in
+    start-path (cx -' r, cy)
+      |> bezier-to (cx -' r, cy +' t) (cx -' t, cy +' r) (cx, cy +' r)
+      |> bezier-to (cx +' t, cy +' r) (cx +' r, cy +' t) (cx +' r, cy)
+      |> bezier-to (cx +' r, cy -' t) (cx +' t, cy -' r) (cx, cy -' r)
+      |> close-with-bezier (cx -' t, cy -' r) (cx -' r, cy -' t)
+
+  val linear-transform = linear-transform-path %PRIMITIVE
+
+  val shift = shift-path %PRIMITIVE
+
+  val rotate centpt angle path =
+    let (centx, centy) = centpt in
+    let rad = angle *. Float.pi /. 180. in
+    path |> shift (0pt -' centx, 0pt -' centy)
+         |> linear-transform (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
+         |> shift centpt
+
+  val scale centpt scalex scaley path =
+    let (centx, centy) = centpt in
+    path |> shift (0pt -' centx, 0pt -' centy)
+         |> linear-transform scalex 0. 0. scaley
+         |> shift centpt
+
+  val get-bounding-box = get-path-bbox %PRIMITIVE
+
+end

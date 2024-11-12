@@ -4,6 +4,9 @@ use package Code
 use package Annot
 use package FootnoteScheme
 
+use package HyphEnglish
+use package Unidata
+
 use package FontJunicode
 use package FontIpaEx
 use package FontLatinModern
@@ -16,9 +19,9 @@ module StdJaReport :> sig
       show-page-number : bool,
       text-width       : length,
       text-height      : length,
-      text-origin      : Pervasives.point, %- TODO: remove this by using 'open'
-      header-origin    : Pervasives.point,
-      footer-origin    : Pervasives.point,
+      text-origin      : point,
+      header-origin    : point,
+      footer-origin    : point,
       header-width     : length,
       footer-width     : length,
     ) (|
@@ -54,12 +57,6 @@ module StdJaReport :> sig
 
 end = struct
 
-%  type toc-element =
-%    | TOCElementChapter    of string * inline-text
-%    | TOCElementSection    of string * inline-text
-%    | TOCElementSubsection of string * inline-text
-
-
   val generate-fresh-label =
     let mutable count <- 0 in
       (fun () -> (
@@ -67,9 +64,7 @@ end = struct
           `generated:` ^ (arabic (!count))
       ))
 
-
   val no-pads = (0pt, 0pt, 0pt, 0pt)
-
 
   val inline ctx \ref key =
     let opt = get-cross-reference (key ^ `:num`) in
@@ -81,7 +76,6 @@ end = struct
     in
     inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
 
-
   val inline ctx \ref-page key =
     let opt = get-cross-reference (key ^ `:page`) in
     let it =
@@ -91,7 +85,6 @@ end = struct
       end
     in
     inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
-
 
   val font-size-normal  = 12pt
   val font-size-title   = 18pt
@@ -117,19 +110,18 @@ end = struct
   val font-cjk-mincho   = (FontIpaEx.mincho    , font-ratio-cjk  , 0.)
   val font-cjk-gothic   = (FontIpaEx.gothic    , font-ratio-cjk  , 0.)
 
-
   val set-latin-font font ctx =
     ctx |> set-font Latin font
-
 
   val set-cjk-font font ctx =
     ctx |> set-font HanIdeographic font
         |> set-font Kana           font
 
-
   val get-standard-context wid =
     get-initial-context wid (command \Math.math)
-      |> set-code-text-command (command \Code.code)
+      |> set-code-text-command (command \Code.Default.code)
+      |> set-hyphenation-dictionary HyphEnglish.hyphenation
+      |> set-unicode-char-database Unidata.unidata
       |> set-dominant-wide-script Kana
       |> set-language Kana Japanese
       |> set-language HanIdeographic Japanese
@@ -142,19 +134,15 @@ end = struct
       |> set-math-font FontLatinModernMath.main
       |> set-hyphen-penalty 100
 
-
   val mutable ref-float-boxes <- []
-
 
   val height-of-float-boxes pageno =
 %    let () = display-message `get height` in
-    (!ref-float-boxes) |> List.fold-left (fun h (pn, bb) -> (
+    (!ref-float-boxes) |> List.fold (fun h (pn, bb) -> (
       if pn < pageno then h +' (get-natural-length bb) else h
     )) 0pt
 
-
   val mutable ref-figure <- 0
-
 
   val inline ctx \figure ?(label = label-opt) caption inner =
     let () = ref-figure <- !ref-figure + 1 in
@@ -168,11 +156,8 @@ end = struct
     let it-num = embed-string s-num in
     let ds =
       match label-opt with
-      | Some(label) ->
-          Annot.register-location-frame label
-
-      | None ->
-          let d (_, _) _ _ _ = Gr.empty in (d, d, d, d)
+      | Some(label) -> Annot.register-location-frame label
+      | None        -> VDecoSet.empty
       end
     in
     let bb-inner =
@@ -186,30 +171,24 @@ end = struct
       ref-float-boxes <- (pbinfo#page-number, bb-inner) :: !ref-float-boxes
     ))
 
-
   val make-chapter-title ctx =
     ctx |> set-font-size font-size-chapter
         |> set-font Latin font-latin-sans
         |> set-cjk-font font-cjk-gothic
-
 
   val make-section-title ctx =
     ctx |> set-font-size font-size-section
         |> set-font Latin font-latin-sans
         |> set-cjk-font font-cjk-gothic
 
-
   val make-subsection-title ctx =
     ctx |> set-font-size font-size-subsection
         |> set-font Latin font-latin-sans
         |> set-cjk-font font-cjk-gothic
 
-
-%  val mutable toc-acc-ref <- []
   val mutable outline-ref <- []
   val mutable does-page-breaking-reach-last <- false
   val mutable ref-current-page <- 0
-
 
   val get-cross-reference-number label =
     match get-cross-reference (label ^ `:num`) with
@@ -217,32 +196,26 @@ end = struct
     | Some(s) -> s
     end
 
-
   val get-cross-reference-page label =
     match get-cross-reference (label ^ `:page`) with
     | None    -> `?`
     | Some(s) -> s
     end
 
-
   val chapter-heading ctx ib-heading =
     line-break true false
       (ctx |> set-paragraph-margin chapter-top-margin chapter-bottom-margin)
         ib-heading
-
 
   val section-heading ctx ib-heading =
     line-break true false
       (ctx |> set-paragraph-margin section-top-margin section-bottom-margin)
         ib-heading
 
-
   val inline ctx \dummy it =
-    let open Pervasives in
     let ib = read-inline (ctx |> set-text-color Color.white) it in
-    let w = get-natural-width ib in
+    let w = Inline.get-natural-advance ib in
     ib ++ inline-skip (0pt -' w)
-
 
   val document
     ?(
@@ -329,7 +302,7 @@ end = struct
         in
 %        let () = display-message `insert` in
         let (bb-float-boxes, acc) =
-          (!ref-float-boxes) |> List.fold-left (fun (bbacc, acc) elem -> (
+          (!ref-float-boxes) |> List.fold (fun (bbacc, acc) elem -> (
             let (pn, bb) = elem in
               if pn < pageno then
                 let () = display-message (`use `# ^ arabic pn) in
@@ -373,7 +346,7 @@ end = struct
       let pageno = !ref-current-page in
       let last = !does-page-breaking-reach-last in
       let remains =
-        (!ref-float-boxes) |> List.fold-left (fun b (pn, _) -> (
+        (!ref-float-boxes) |> List.fold (fun b (pn, _) -> (
           if pn < pageno then b else true
         )) false
       in
@@ -402,40 +375,33 @@ end = struct
         (bb-title +++ bb-main +++ bb-last)
     in
     let () = register-outline (List.reverse !outline-ref) in
-      doc
-
+    doc
 
   val mutable num-chapter <- 0
   val mutable num-section <- 0
   val mutable num-subsection <- 0
   val mutable num-theorems <- 0
 
-
   val quad-indent ctx =
     inline-skip (get-font-size ctx *' font-ratio-cjk)
 
-
   val block ctx +p inner =
-    let open Pervasives in
     let ib-inner = read-inline ctx inner in
     let ib-parag = (quad-indent ctx) ++ ib-inner ++ inline-fil in
-    form-paragraph ctx ib-parag
-
+    Block.form-paragraph ctx ib-parag
 
   val chapter-scheme ctx label title outline-title-opt inner =
-    let open Pervasives in
     let ctx-title = make-chapter-title ctx in
-    let () = increment num-chapter in
+    let () = Ref.increment num-chapter in
     let () = num-section <- 0 in
     let () = num-subsection <- 0 in
     let s-num = arabic (!num-chapter) in
     let () = register-cross-reference (label ^ `:num`) s-num in
-%    let () = toc-acc-ref <- (TOCElementChapter(label, title)) :: !toc-acc-ref in
     let ib-num =
       read-inline ctx-title (embed-string (s-num ^ `.`))
         ++ hook-page-break (fun pbinfo _ -> (
              let pageno = pbinfo#page-number in
-               register-cross-reference (label ^ `:page`) (arabic pageno)))
+             register-cross-reference (label ^ `:page`) (arabic pageno)))
     in
     let ib-title = read-inline ctx-title title in
     let outline-title = Option.from (extract-string ib-title) outline-title-opt in
@@ -448,17 +414,14 @@ end = struct
       chapter-heading ctx ib
     in
     let bb-inner = read-block ctx inner in
-      bb-title +++ bb-inner
-
+    bb-title +++ bb-inner
 
   val section-scheme ctx label title outline-title-opt inner =
-    let open Pervasives in
     let ctx-title = make-section-title ctx in
-    let () = increment num-section in
+    let () = Ref.increment num-section in
     let () = num-subsection <- 0 in
     let s-num = arabic (!num-chapter) ^ `.` ^ arabic (!num-section) in
     let () = register-cross-reference (label ^ `:num`) s-num in
-%    let () = toc-acc-ref <- (TOCElementSection(label, title)) :: !toc-acc-ref in
     let ib-num =
       read-inline ctx-title (embed-string (s-num ^ `.`))
         ++ hook-page-break (fun pbinfo _ -> (
@@ -476,14 +439,12 @@ end = struct
       section-heading ctx ib
     in
     let bb-inner = read-block ctx inner in
-      bb-title +++ bb-inner
-
+    bb-title +++ bb-inner
 
   val subsection-scheme ctx label title outline-title-opt inner =
     let () = num-subsection <- !num-subsection + 1 in
     let s-num = arabic (!num-chapter) ^ `.` ^ arabic (!num-section) ^ `.` ^ arabic (!num-subsection) in
     let () = register-cross-reference (label ^ `:num`) s-num in
-%    let () = toc-acc-ref <- (TOCElementSubsection(label, title)) :: !toc-acc-ref in
     let ctx-title = make-subsection-title ctx in
     let ib-num =
       read-inline ctx-title (embed-string (s-num ^ `.`))
@@ -500,7 +461,6 @@ end = struct
     let bb-inner = read-block ctx inner in
     bb-title +++ bb-inner
 
-
   val block ctx +chapter ?(label = label-opt, outline-title = outline-title-opt) title inner =
     let label =
       match label-opt with
@@ -509,7 +469,6 @@ end = struct
       end
     in
     chapter-scheme ctx label title outline-title-opt inner
-
 
   val block ctx +section ?(label = label-opt, outline-title = outline-title-opt) title inner =
     let label =
@@ -520,7 +479,6 @@ end = struct
     in
     section-scheme ctx label title outline-title-opt inner
 
-
   val block ctx +subsection ?(label = label-opt, outline-title = outline-title-opt) title inner =
     let label =
       match label-opt with
@@ -530,10 +488,8 @@ end = struct
     in
     subsection-scheme ctx label title outline-title-opt inner
 
-
   val theorem-scheme ctx ctxf category wordopt label inner =
-    let open Pervasives in
-    let () = increment num-theorems in
+    let () = Ref.increment num-theorems in
     let s-num =
       (arabic (!num-chapter)) ^ `.` ^ (arabic (!num-section)) ^ `.` ^ (arabic (!num-theorems))
     in
@@ -552,38 +508,31 @@ end = struct
     line-break true true ctx
       (ib-dfn ++ ib-word ++ inline-skip (get-font-size ctx) ++ ib-inner ++ inline-fil)
 
-
   val make-label prefix labelopt =
     match labelopt with
     | None    -> generate-fresh-label ()
     | Some(s) -> prefix ^ s
     end
 
-
   val block ctx +definition ?(word = word-opt, label = label-opt) inner =
     let label = make-label `definition:` label-opt in
     theorem-scheme ctx (fun x -> x) {Definition} word-opt label inner
-
 
   val block ctx +theorem ?(word = word-opt, label = label-opt) inner =
     let label = make-label `theorem:` label-opt in
     theorem-scheme ctx (set-latin-font font-latin-italic) {Theorem} word-opt label inner
 
-
   val block ctx +lemma ?(word = word-opt, label = label-opt) inner =
     let label = make-label `lemma:` label-opt in
     theorem-scheme ctx (set-latin-font font-latin-italic) {Lemma} word-opt label inner
-
 
   val block ctx +corollary ?(word = word-opt, label = label-opt) inner =
     let label = make-label `corollary:` label-opt in
     theorem-scheme ctx (set-latin-font font-latin-italic) {Corollary} word-opt label inner
 
-
   val block ctx +example ?(word = word-opt, label = label-opt) inner =
     let label = make-label `example:` label-opt in
     theorem-scheme ctx (fun x -> x) {Example} word-opt label inner
-
 
   val block ctx +proof ?(word = word-opt) inner =
     let ib-heading =
@@ -597,7 +546,6 @@ end = struct
     line-break true true ctx
       (ib-heading ++ inline-skip (get-font-size ctx) ++ read-inline ctx inner ++ inline-fil ++ ib-box)
 
-
   val inline ctx \emph inner =
     let ctx =
       ctx |> set-font Latin font-latin-sans
@@ -605,9 +553,7 @@ end = struct
     in
     read-inline ctx inner
 
-
   val inline \dfn inner = {\emph{#inner;}}
-
 
   val inline ctx \footnote it =
     let size = get-font-size ctx in

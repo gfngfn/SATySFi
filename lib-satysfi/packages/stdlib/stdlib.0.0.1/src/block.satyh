@@ -1,0 +1,49 @@
+use List
+use Inline
+
+module Block :> sig
+  val nil : block-boxes
+  val concat : list block-boxes -> block-boxes
+  val skip : length -> block-boxes
+  val clear-page : block-boxes
+  val line-break : bool -> bool -> context -> inline-boxes -> block-boxes
+  val form-paragraph : context -> inline-boxes -> block-boxes
+  val +skip : block [length]
+  val +clear-page : block []
+  val +ragged-right : block [inline-text]
+  val +centering : block [inline-text]
+  val \skip : inline [length]
+end = struct
+
+  val nil = block-nil %PRIMITIVE
+
+  val concat bbs =
+    List.fold ( +++ ) nil bbs
+
+  val skip = block-skip %PRIMITIVE
+
+  val clear-page = clear-page %PRIMITIVE
+
+  val line-break = line-break %PRIMITIVE
+
+  val form-paragraph =
+    line-break true true
+
+  val block ctx +skip len =
+    block-skip len
+
+  val block ctx +clear-page =
+    clear-page
+
+  val block ctx +ragged-right it =
+    form-paragraph ctx (Inline.fil ++ read-inline ctx it)
+
+  val block ctx +centering it =
+    form-paragraph ctx (Inline.fil ++ read-inline ctx it ++ Inline.fil)
+
+  val inline ctx \skip len =
+    Inline.fil
+      ++ Inline.embed-block-breakable ctx (skip len)
+      ++ Inline.omit-skip-after
+
+end

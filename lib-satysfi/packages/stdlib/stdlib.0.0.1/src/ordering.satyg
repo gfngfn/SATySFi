@@ -1,0 +1,44 @@
+use open Basic
+
+module Ordering :> sig
+  type t = ordering
+  val ~lift : ordering -> code ordering
+  val persistent ~compare : ordering -> ordering -> ordering
+  val persistent ~equal : ordering -> ordering -> bool
+  val persistent ~show : ordering -> string
+end = struct
+
+  type t = ordering
+
+  val ~lift o =
+    match o with
+    | Less    -> &(Less)
+    | Equal   -> &(Equal)
+    | Greater -> &(Greater)
+    end
+
+  val persistent ~compare o1 o2 =
+    match (o1, o2) with
+    | (Less, Less)       -> Equal
+    | (Less, _)          -> Less
+    | (_, Less)          -> Greater
+    | (Equal, Equal)     -> Equal
+    | (Equal, Greater)   -> Less
+    | (Greater, Equal)   -> Greater
+    | (Greater, Greater) -> Equal
+    end
+
+  val persistent ~equal o1 o2 =
+    match compare o1 o2 with
+    | Equal -> true
+    | _     -> false
+    end
+
+  val persistent ~show o =
+    match o with
+    | Less    -> `Less`
+    | Equal   -> `Equal`
+    | Greater -> `Greater`
+    end
+
+end

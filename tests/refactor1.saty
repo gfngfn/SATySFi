@@ -1,22 +1,3 @@
-#[config (|
-  registries = [
-    (|
-      name = `default`,
-      remote =
-        Git(|
-          url = `https://github.com/SATySFi/default-registry`,
-          branch = `format-1`,
-        |)
-    |)
-  ],
-  dependencies = [
-    (| name = `stdlib`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `math`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `font-junicode`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `font-ipa-ex`, registry = `default`, requirement = `^0.0.1` |),
-    (| name = `font-latin-modern-math`, registry = `default`, requirement = `^0.0.1` |),
-  ],
-|)]
 use package open Stdlib
 use package open Math
 use package FontJunicode
@@ -26,15 +7,7 @@ use package FontLatinModernMath
 let font-latin-roman = (FontJunicode.normal, 1., 0.) in
 let font-cjk-mincho = (FontIpaEx.mincho, 0.88, 0.) in
 
-
-%let rec fold-left f i l =
-%  match l with
-%  | []      -> i
-%  | x :: xs -> fold-left f (f i x) xs
-%  end
-%in
-
-let sum = List.fold-left (+) 0 [3, 1, 4, 1, 5, 9, 2] in
+let sum = List.fold (+) 0 [3, 1, 4, 1, 5, 9, 2] in
 
 let f t y =
   if t == 0 then y else t + 2
@@ -46,8 +19,6 @@ let g p q =
   end
 in
 let s = arabic sum ^ `,` ^ arabic (f 0 42) ^ `,` ^ arabic (f 1 42) ^ `,` ^ arabic (g 0 42) ^ `,` ^ arabic (g 1 42) in
-
-%let inline ctx \math m = embed-math ctx (read-math ctx m) in
 let ctx =
   get-initial-context 400pt (command \math)
     |> set-font Kana           font-cjk-mincho
@@ -56,7 +27,7 @@ let ctx =
     |> set-font OtherScript    font-latin-roman
     |> set-math-font FontLatinModernMath.main
 in
-let paper-size = (210mm, 297mm) in %A4
+let paper-size = PaperSize.a4 in
 let pagecontf _ = (| text-origin = (20pt, 20pt), text-height = 600pt, |) in
 let pagepartsf _ = (| header-origin = (0pt, 0pt), header-content = block-nil, footer-origin = (0pt, 0pt), footer-content = block-nil, |) in
 

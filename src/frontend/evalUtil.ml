@@ -462,6 +462,16 @@ let get_prepath (value : syntactic_value) : PrePath.t =
   | _                                -> report_bug_value "get_prepath" value
 
 
+let get_hyphenation : syntactic_value -> LoadHyph.t = function
+  | BaseConstant(BCHyphenation(hyph)) -> hyph
+  | value                             -> report_bug_value "get_hyphenation" value
+
+
+let get_unicode_char_database : syntactic_value -> ScriptDataMap.t * LineBreakDataMap.t = function
+  | BaseConstant(BCUnidata(unidata)) -> unidata
+  | value                            -> report_bug_value "get_unicode_char_database" value
+
+
 let get_outline (value : syntactic_value) =
   match value with
   | Tuple([

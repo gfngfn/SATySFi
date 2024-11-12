@@ -7,7 +7,6 @@ type font_error =
   | FailedToMakeSubset            of abs_path * Otfed.Subset.Error.t
   | NotASingleFont                of abs_path
   | NotAFontCollectionElement     of abs_path * int
-  | CannotFindLibraryFileAsToFont of lib_path * abs_path list
   | NoMathTable                   of abs_path
   | PostscriptNameNotFound        of abs_path
   | CannotFindUnicodeCmap         of abs_path
@@ -16,3 +15,5 @@ type font_error =
       index        : int;
       num_elements : int;
     }
+  | UnsupportedNoLangSys
+  | UnsupportedCidToGidMapOtherThanIdentity

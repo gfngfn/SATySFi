@@ -1,6 +1,6 @@
 (lang dune 3.16)
 
-(using menhir 2.1)
+(using menhir 3.0)
 
 (formatting
  (enabled_for dune))
@@ -20,6 +20,7 @@
 
 (package
  (name satysfi)
+ (version 0.1.0~alpha.1)
  (synopsis "A statically-typed, functional typesetting system")
  (description
   "SATySFi is a typesetting system equipped with a statically-typed, functional programming language. It consists mainly of two “layers” ― the text layer and the program layer. The former is for writing documents in LaTeX-like syntax. The latter, which has OCaml-like syntax, is for defining functions and commands. SATySFi enables you to write documents markuped with flexible commands of your own making. In addition, its informative type error reporting will be a good help to your writing.")
@@ -78,6 +79,8 @@
    (and
     (>= 1.10.4)
     (< 2.0)))
+  satysfi-common
+  satysfi-util
   (semver2
    (and
     (>= 1.2.0)
@@ -100,11 +103,95 @@
     (< 16.0)))
   (yaml
    (and
-    (>= 2.1.0)
-    (< 3.0)))
+    (>= 3.2.0)
+    (< 4.0)))
   (yojson-with-position
    (= 1.4.2+satysfi))
   (0install-solver
    (and
-    (>= 2.0)
+    (>= 2.18)
     (< 3.0)))))
+
+(package
+ (name saphe)
+ (version 0.1.0~alpha.1)
+ (synopsis "A prototype ecosystem for SATySFi >= 0.1.0")
+ (depends
+  (0install-solver
+   (>= 2.18))
+  (ocaml
+   (and
+    (>= 4.12.0)
+    (< 5.0.0)))
+  (alcotest
+   (and
+    :with-test
+    (>= 1.4.0)))
+  (cmdliner
+   (and
+    (>= 1.1.1)
+    (< 2.0)))
+  (ppx_deriving
+   (and
+    (>= 5.2.1)
+    (< 6.0)))
+  satysfi-common
+  satysfi-util
+  (uri
+   (and
+    (>= 4.2.0)
+    (< 5.0)))))
+
+(package
+ (name satysfi-util)
+ (version 0.1.0~alpha.1)
+ (synopsis "A utility library for SATySFi and Saphe")
+ (depends
+  (ocaml
+   (and
+    (>= 4.12.0)
+    (< 5.0.0)))
+  (alcotest
+   (and
+    :with-test
+    (>= 1.4.0)))
+  core_unix
+  (ocamlgraph
+   (and
+    (>= 2.0.0)
+    (< 3.0)))
+  (ppx_deriving
+   (and
+    (>= 5.2.1)
+    (< 6.0)))
+  (semver2
+   (and
+    (>= 1.2.0)
+    (< 2.0)))
+  (uutf
+   (and
+    (>= 1.0.3)
+    (< 2.0)))
+  (yaml
+   (and
+    (>= 3.2.0)
+    (< 4.0)))))
+
+(package
+ (name satysfi-common)
+ (version 0.1.0~alpha.1)
+ (synopsis "A library of modules used by SATySFi and Saphe in common")
+ (depends
+  (ocaml
+   (and
+    (>= 4.12.0)
+    (< 5.0.0)))
+  (alcotest
+   (and
+    :with-test
+    (>= 1.4.0)))
+  (ppx_deriving
+   (and
+    (>= 5.2.1)
+    (< 6.0)))
+  satysfi-util))

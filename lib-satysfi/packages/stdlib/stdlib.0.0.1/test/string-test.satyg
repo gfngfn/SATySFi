@@ -1,0 +1,34 @@
+use package open Testing
+use String
+use List
+
+module StringTest = struct
+
+  #[test]
+  val chop-prefix-test () =
+    List.iter (fun r ->
+      assert-equal ?(title = r#title) Equality.(option string)
+        r#expected
+        (String.chop-prefix r#prefix r#data)
+    ) [
+      (|
+        title = `removes a prefix (1)`,
+        prefix = `foo`,
+        data = `foobar`,
+        expected = Some(`bar`),
+      |),
+      (|
+        title = `removes a prefix (2)`,
+        prefix = `foo`,
+        data = `foo`,
+        expected = Some(` `),
+      |),
+      (|
+        title = `fail`,
+        prefix = `foo`,
+        data = `fob`,
+        expected = None,
+      |),
+    ]
+
+end

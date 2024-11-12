@@ -1,0 +1,27 @@
+saphe: "^0.1.0-alpha.1"
+satysfi: "^0.1.0-alpha.1"
+name: "math"
+authors:
+  - "Takashi Suwa <@gfngfn>"
+  - "Toru Niina <@ToruNiina>"
+  - "forestaa <@forestaa>"
+  - "Takuma Ishikawa <@nekketsuuu>"
+  - "El Pin Al <@elpinal>"
+  - "coord_e <@coord-e>"
+  - "SnO₂WMaN <@SnO2WMaN>"
+registries:
+  - name: "default"
+    git:
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "temp-dev-saphe"
+contents:
+  library:
+    main_module: "Math"
+    source_directories:
+      - "./src"
+dependencies:
+  - used_as: "Stdlib"
+    registered:
+      registry: "default"
+      name: "stdlib"
+      requirement: "^0.0.1"

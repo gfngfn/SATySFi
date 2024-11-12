@@ -1,0 +1,91 @@
+use open Basic
+use Int
+use Option
+use List
+
+module String :> sig
+  type t = string
+  val ~lift : string -> code string
+  val persistent ~compare : string -> string -> ordering
+  val persistent ~equal : string -> string -> bool
+  val persistent ~append : string -> string -> string
+  val persistent ~length : string -> int
+  val persistent ~byte-length : string -> int
+  val persistent ~sub : string -> int -> int -> string
+  val persistent ~sub-bytes : string -> int -> int -> string
+  val persistent ~to-scalar-values : string -> list int
+  val persistent ~from-scalar-values : list int -> string
+  val persistent ~normalize-to-nfc : string -> string
+  val persistent ~normalize-to-nfd : string -> string
+  val persistent ~split-into-grapheme-clusters : string -> list string
+  val persistent ~empty : string
+  val persistent ~split-into-lines : string -> list (int * string)
+  val persistent ~concat : string -> list string -> string
+  val persistent ~chop-prefix : string -> string -> option string
+  val persistent ~chop-suffix : string -> string -> option string
+end = struct
+
+  type t = string
+
+  val ~lift = lift-string %PRIMITIVE
+
+  val persistent ~equal = string-same %PRIMITIVE
+
+  val persistent ~append = ( ^ ) %PRIMITIVE
+
+  val persistent ~length = string-length %PRIMITIVE
+
+  val persistent ~byte-length = string-byte-length %PRIMITIVE
+
+  val persistent ~sub = string-sub %PRIMITIVE
+
+  val persistent ~sub-bytes = string-sub-bytes %PRIMITIVE
+
+  val persistent ~to-scalar-values = string-explode %PRIMITIVE
+
+  val persistent ~from-scalar-values = string-unexplode %PRIMITIVE
+
+  val persistent ~normalize-to-nfc = normalize-string-to-nfc %PRIMITIVE
+
+  val persistent ~normalize-to-nfd = normalize-string-to-nfd %PRIMITIVE
+
+  val persistent ~split-into-grapheme-clusters = split-grapheme-cluster %PRIMITIVE
+
+  val persistent ~compare s1 s2 =
+    List.compare Int.compare (to-scalar-values s1) (to-scalar-values s2)
+
+  val persistent ~empty =
+    ` `
+
+  val persistent ~split-into-lines = split-into-lines %PRIMITIVE
+
+  val persistent ~concat sep elems =
+    elems |> List.fold-adjacent (fun s elem _ next-opt ->
+      match next-opt with
+      | None    -> s ^ elem
+      | Some(_) -> s ^ elem ^ sep
+      end
+    ) ` `
+
+  val persistent ~rec chop-aux chars-prefix chars-target =
+    match (chars-prefix, chars-target) with
+    | ([], _) ->
+        Some(chars-target)
+    | (prefix-head :: prefix-tail, target-head :: target-tail) ->
+        if prefix-head == target-head then
+          chop-aux prefix-tail target-tail
+        else
+          None
+    | (_, []) ->
+        None
+    end
+
+  val persistent ~chop-prefix prefix target =
+    Option.map from-scalar-values (chop-aux (to-scalar-values prefix) (to-scalar-values target))
+
+  val persistent ~chop-suffix suffix target =
+    let decompose s = List.reverse (to-scalar-values s) in
+    let compose chars = from-scalar-values (List.reverse chars) in
+    Option.map compose (chop-aux (decompose suffix) (decompose target))
+
+end

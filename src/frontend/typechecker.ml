@@ -100,7 +100,7 @@ let add_optionals_to_type_environment ~(cons : label ranged -> mono_type -> 'a -
       let evid = EvalVarID.fresh ident in
       let fid = fresh_free_id qtfbl lev in
       let tvuref = ref (MonoFree(fid)) in
-      let pbeta = (rng, TypeVariable(PolyFree(tvuref))) in
+      let pbeta = (rng, TypeVariable(PolyFree(Updatable(tvuref)))) in
       let tyenv =
         let ventry =
           {
@@ -252,6 +252,57 @@ let rec typecheck_pattern (pre : pre) (tyenv : Typeenv.t) ((rng, utpatmain) : un
         let* (epat1, typat1, tyenv1) = iter utpat1 in
         let* () = unify tyc typat1 in
         return (PConstructor(ctornm, epat1), (rng, DataType(tyargs, tyid)), tyenv1)
+
+
+let typecheck_function_parameter_unit ~(cons : label ranged -> mono_type -> 'a -> 'a) ~(nil : 'a) (pre : pre) (tyenv : Typeenv.t) (param_unit : untyped_parameter_unit) : (Typeenv.t * 'a * mono_type * EvalVarID.t LabelMap.t * pattern_tree) ok =
+  let open ResultMonad in
+  let UTParameterUnit(opt_params, utpat, mnty_opt) = param_unit in
+  let (optrow, evid_labmap, tyenv) =
+    add_optionals_to_type_environment ~cons ~nil tyenv pre opt_params
+  in
+  let* (epat, ty_pat, patvarmap) = typecheck_pattern pre tyenv utpat in
+  let* () =
+    match mnty_opt with
+    | Some(mnty_annot) ->
+        let* ty_annot = ManualTypeDecoder.decode_manual_type pre tyenv mnty_annot in
+        unify ty_pat ty_annot
+
+    | None ->
+        return ()
+  in
+  let tyenv = add_pattern_var_mono pre tyenv patvarmap in
+  return (tyenv, optrow, ty_pat, evid_labmap, epat)
+
+
+let typecheck_abstraction ~(cons : label ranged -> mono_type -> 'a -> 'a) ~(nil : 'a) (pre : pre) (tyenv : Typeenv.t) (param_units : untyped_parameter_unit list) : (Typeenv.t * (EvalVarID.t LabelMap.t * pattern_tree * 'a * mono_type) list) ok =
+  let open ResultMonad in
+  let* (tyenv, acc) =
+    param_units |> foldM (fun (tyenv, acc) param_unit ->
+      let* (tyenv, ty_labmap, ty_pat, evid_labmap, epat) =
+        typecheck_function_parameter_unit ~cons ~nil pre tyenv param_unit
+      in
+      return (tyenv, Alist.extend acc (evid_labmap, epat, ty_labmap, ty_pat))
+    ) (tyenv, Alist.empty)
+  in
+  return (tyenv, acc |> Alist.to_list)
+
+
+let typecheck_function_parameter_unit_with_row =
+  let cons rlabel ty row = (RowCons(rlabel, ty, row)) in
+  let nil = RowEmpty in
+  typecheck_function_parameter_unit ~cons ~nil
+
+
+let typecheck_abstraction_with_row =
+  let cons rlabel ty row = (RowCons(rlabel, ty, row)) in
+  let nil = RowEmpty in
+  typecheck_abstraction ~cons ~nil
+
+
+let typecheck_abstraction_with_label_map =
+  let cons (_, label) ty ty_labmap = ty_labmap |> LabelMap.add label ty in
+  let nil = LabelMap.empty in
+  typecheck_abstraction ~cons ~nil
 
 
 let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_abstract_tree) : (abstract_tree * mono_type) ok =
@@ -436,7 +487,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       context_variable = ident_ctx;
       body             = utast_body;
     } ->
-      let* (tyenv, params) = typecheck_abstraction pre tyenv param_units in
+      let* (tyenv, params) = typecheck_abstraction_with_label_map pre tyenv param_units in
       let (rng_var, varnm_ctx) = ident_ctx in
       let (bsty_var, bsty_ret) =
         if pre.config.is_text_mode then
@@ -459,7 +510,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
         typecheck_iter tyenv utast_body
       in
       let* () = unify ty_body (Range.dummy "lambda-inline-return", BaseType(bsty_ret)) in
-      let e =
+      let e1 =
         List.fold_right (fun (evid_labmap, pat, _, _) e ->
           Function(evid_labmap, PatternBranch(pat, e))
         ) params (LambdaInline(evid_ctx, e_body))
@@ -469,14 +520,14 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
           CommandArgType(ty_labmap, ty_pat)
         )
       in
-      return (e, (rng, InlineCommandType(cmdargtys)))
+      return (e1, (rng, InlineCommandType(cmdargtys)))
 
   | UTLambdaBlockCommand{
       parameters       = param_units;
       context_variable = ident_ctx;
       body             = utast_body;
     } ->
-      let* (tyenv, params) = typecheck_abstraction pre tyenv param_units in
+      let* (tyenv, params) = typecheck_abstraction_with_label_map pre tyenv param_units in
       let (rng_var, varnm_ctx) = ident_ctx in
       let (bsty_var, bsty_ret) =
         if pre.config.is_text_mode then
@@ -486,7 +537,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       in
       let evid_ctx = EvalVarID.fresh ident_ctx in
       let* (e_body, ty_body) =
-        let tyenv_sub =
+        let tyenv =
           let ventry =
             {
               val_type  = Poly(rng_var, BaseType(bsty_var));
@@ -496,10 +547,10 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
           in
           tyenv |> Typeenv.add_value varnm_ctx ventry
         in
-        typecheck_iter tyenv_sub utast_body
+        typecheck_iter tyenv utast_body
       in
       let* () = unify ty_body (Range.dummy "lambda-block-return", BaseType(bsty_ret)) in
-      let e =
+      let e1 =
         List.fold_right (fun (evid_labmap, pat, _, _) e ->
           Function(evid_labmap, PatternBranch(pat, e))
         ) params (LambdaBlock(evid_ctx, e_body))
@@ -509,7 +560,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
           CommandArgType(ty_labmap, ty_pat)
         )
       in
-      return (e, (rng, BlockCommandType(cmdargtys)))
+      return (e1, (rng, BlockCommandType(cmdargtys)))
 
   | UTLambdaMathCommand{
       parameters       = param_units;
@@ -517,7 +568,7 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       script_variables = ident_pair_opt;
       body             = utast_body;
     } ->
-      let* (tyenv, params) = typecheck_abstraction pre tyenv param_units in
+      let* (tyenv, params) = typecheck_abstraction_with_label_map pre tyenv param_units in
       let (rng_ctx_var, varnm_ctx) = ident_ctx in
       let (bsty_ctx_var, bsty_ret) =
         if pre.config.is_text_mode then
@@ -622,23 +673,12 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
             err (ApplicationOfNonFunction(rng1, ty1))
       end
 
-  | UTFunction(UTParameterUnit(opt_params, pat, mnty_opt), utast1) ->
-      let (optrow, evid_labmap, tyenv) =
-        let cons rlabel ty row =
-          (RowCons(rlabel, ty, row))
-        in
-        let nil = RowEmpty in
-        add_optionals_to_type_environment ~cons ~nil tyenv pre opt_params
+  | UTFunction(param_unit, utast1) ->
+      let* (tyenv, optrow, ty_pat, evid_labmap, epat) =
+        typecheck_function_parameter_unit_with_row pre tyenv param_unit
       in
-      let utpatbr = UTPatternBranch(pat, utast1) in
-      let* (patbr, typat, ty1) = typecheck_pattern_branch pre tyenv utpatbr in
-      let* _unit_opt =
-        mnty_opt |> optionM (fun mnty ->
-          let* typat_annot = ManualTypeDecoder.decode_manual_type pre tyenv mnty in
-          unify typat typat_annot
-        )
-      in
-      return (Function(evid_labmap, patbr), (rng, FuncType(optrow, typat, ty1)))
+      let* (e1, ty1) = typecheck pre tyenv utast1 in
+      return (Function(evid_labmap, PatternBranch(epat, e1)), (rng, FuncType(optrow, ty_pat, ty1)))
 
   | UTPatternMatch(utastO, utpatbrs) ->
       let* (eO, tyO) = typecheck_iter tyenv utastO in
@@ -647,53 +687,61 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       Exhchecker.main rng patbrs tyO pre tyenv;
       return (PatternMatch(rng, eO, patbrs), beta)
 
-  | UTLetIn(UTNonRec((ident, utast1)), utast2) ->
-      let presub = { pre with level = Level.succ pre.level; } in
-      let (_, varnm) = ident in
-      let evid = EvalVarID.fresh ident in
-      let* (e1, ty1) = typecheck presub tyenv utast1 in
-      let tyenv =
-        let pty =
-          if is_nonexpansive_expression e1 then
-          (* If `e1` is polymorphically typeable: *)
-            TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
-          else
-          (* If `e1` should be typed monomorphically: *)
-            TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
-        in
-        let ventry =
-          {
-            val_type  = pty;
-            val_name  = Some(evid);
-            val_stage = pre.stage;
-          }
-        in
-        tyenv |> Typeenv.add_value varnm ventry
-      in
-      let* (e2, ty2) = typecheck_iter tyenv utast2 in
-      return (LetNonRecIn(PVariable(evid), e1, e2), ty2)
-
-  | UTLetIn(UTRec(utrecbinds), utast2) ->
-      let* quints = typecheck_letrec pre tyenv utrecbinds in
-      let (tyenv, recbindacc) =
-        quints |> List.fold_left (fun (tyenv, recbindacc) quint ->
-          let (x, pty, evid, recbind) = quint in
-          let tyenv =
-            let ventry =
-              {
-                val_type  = pty;
-                val_name  = Some(evid);
-                val_stage = pre.stage;
-              }
+  | UTLetIn(valbind, utast2) ->
+      begin
+        match valbind with
+        | UTNonRec(utletbind) ->
+            let* (varnm, pty1, evid, e1) = typecheck_let_nonrec ~always_polymorphic:false pre tyenv utletbind in
+            let tyenv =
+              let ventry =
+                {
+                  val_type  = pty1;
+                  val_name  = Some(evid);
+                  val_stage = pre.stage;
+                }
+              in
+              tyenv |> Typeenv.add_value varnm ventry
             in
-            tyenv |> Typeenv.add_value x ventry
-          in
-          let recbindacc = Alist.extend recbindacc recbind in
-          (tyenv, recbindacc)
-        ) (tyenv, Alist.empty)
-      in
-      let* (e2, ty2) = typecheck_iter tyenv utast2 in
-      return (LetRecIn(recbindacc |> Alist.to_list, e2), ty2)
+            let* (e2, ty2) = typecheck_iter tyenv utast2 in
+            return (LetNonRecIn(PVariable(evid), e1, e2), ty2)
+
+        | UTRec(utrecbinds) ->
+            let* quints = typecheck_let_rec pre tyenv utrecbinds in
+            let (tyenv, recbindacc) =
+              quints |> List.fold_left (fun (tyenv, recbindacc) quint ->
+                let (x, pty, evid, recbind) = quint in
+                let tyenv =
+                  let ventry =
+                    {
+                      val_type  = pty;
+                      val_name  = Some(evid);
+                      val_stage = pre.stage;
+                    }
+                  in
+                  tyenv |> Typeenv.add_value x ventry
+                in
+                let recbindacc = Alist.extend recbindacc recbind in
+                (tyenv, recbindacc)
+              ) (tyenv, Alist.empty)
+            in
+            let* (e2, ty2) = typecheck_iter tyenv utast2 in
+            return (LetRecIn(recbindacc |> Alist.to_list, e2), ty2)
+
+        | UTMutable(ident, utastI) ->
+            let* (varnm, pty_ref, evid, eI) = typecheck_let_mutable pre tyenv ident utastI in
+            let tyenv =
+              let ventry =
+                {
+                  val_type  = pty_ref;
+                  val_name  = Some(evid);
+                  val_stage = pre.stage;
+                }
+              in
+              tyenv |> Typeenv.add_value varnm ventry
+            in
+            let* (e2, ty2) = typecheck_iter tyenv utast2 in
+            return (LetMutableIn(evid, eI, e2), ty2)
+      end
 
   | UTIfThenElse(utastB, utast1, utast2) ->
       let* (eB, tyB) = typecheck_iter tyenv utastB in
@@ -702,11 +750,6 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
       let* (e2, ty2) = typecheck_iter tyenv utast2 in
       let* () = unify ty2 ty1 in
       return (IfThenElse(eB, e1, e2), ty1)
-
-  | UTLetIn(UTMutable(ident, utastI), utastA) ->
-      let* (tyenvI, evid, eI, _tyI) = typecheck_let_mutable pre tyenv ident utastI in
-      let* (eA, tyA) = typecheck_iter tyenvI utastA in
-      return (LetMutableIn(evid, eI, eA), tyA)
 
   | UTOverwrite(ident, utastN) ->
       let (rng_var, _) = ident in
@@ -822,33 +865,6 @@ let rec typecheck (pre : pre) (tyenv : Typeenv.t) ((rng, utastmain) : untyped_ab
             let* () = unify ty1 (Range.dummy "prev", CodeType(beta)) in
             return (Prev(e1), beta)
       end
-
-
-and typecheck_abstraction (pre : pre) (tyenv : Typeenv.t) (param_units : untyped_parameter_unit list) : (Typeenv.t * (EvalVarID.t LabelMap.t * pattern_tree * mono_type LabelMap.t * mono_type) list) ok =
-  let open ResultMonad in
-  let* (tyenv, acc) =
-    param_units |> foldM (fun (tyenv, acc) param_unit ->
-      let UTParameterUnit(opt_params, utpat, mnty_opt) = param_unit in
-      let (ty_labmap, evid_labmap, tyenv) =
-        let cons (_, label) ty ty_labmap =
-          ty_labmap |> LabelMap.add label ty
-        in
-        let nil = LabelMap.empty in
-        add_optionals_to_type_environment ~cons ~nil tyenv pre opt_params
-      in
-      let* (pat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
-      let* _unit_opt =
-        mnty_opt |> optionM (fun mnty ->
-          let* typat_annot = ManualTypeDecoder.decode_manual_type pre tyenv mnty in
-          unify typat typat_annot
-        )
-      in
-      let tyenv = add_pattern_var_mono pre tyenv patvarmap in
-      return (tyenv, Alist.extend acc (evid_labmap, pat, ty_labmap, typat))
-    ) (tyenv, Alist.empty)
-  in
-  return (tyenv, acc |> Alist.to_list)
-
 
 
 and typecheck_command_arguments (tycmd : mono_type) (rngcmdapp : Range.t) (pre : pre) (tyenv : Typeenv.t) (utcmdargs : untyped_command_argument list) (cmdargtys : mono_command_argument_type list) : ((abstract_tree LabelMap.t * abstract_tree) list) ok =
@@ -1133,10 +1149,10 @@ and typecheck_itemize_list (pre : pre) (tyenv : Typeenv.t) (utitmzlst : untyped_
 and typecheck_pattern_branch (pre : pre) (tyenv : Typeenv.t) (utpatbr : untyped_pattern_branch) : (pattern_branch * mono_type * mono_type) ok =
   let open ResultMonad in
   let UTPatternBranch(utpat, utast1) = utpatbr in
-  let* (epat, typat, patvarmap) = typecheck_pattern pre tyenv utpat in
-  let tyenvpat = add_pattern_var_mono pre tyenv patvarmap in
-  let* (e1, ty1) = typecheck pre tyenvpat utast1 in
-  return (PatternBranch(epat, e1), typat, ty1)
+  let* (epat, ty_pat, patvarmap) = typecheck_pattern pre tyenv utpat in
+  let tyenv_pat = add_pattern_var_mono pre tyenv patvarmap in
+  let* (e1, ty1) = typecheck pre tyenv_pat utast1 in
+  return (PatternBranch(epat, e1), ty_pat, ty1)
 
 
 and typecheck_pattern_branch_list (pre : pre) (tyenv : Typeenv.t) (utpatbrs : untyped_pattern_branch list) (tyobj : mono_type) (tyres : mono_type) : (pattern_branch list) ok =
@@ -1149,20 +1165,20 @@ and typecheck_pattern_branch_list (pre : pre) (tyenv : Typeenv.t) (utpatbrs : un
   )
 
 
-and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_binding list) : ((var_name * poly_type * EvalVarID.t * letrec_binding) list) ok =
+and typecheck_let_rec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_binding list) : ((var_name * poly_type * EvalVarID.t * let_rec_binding) list) ok =
   let open ResultMonad in
 
   (* First, adds a type variable for each bound identifier. *)
   let (tyenv, utrecacc) =
     utrecbinds |> List.fold_left (fun (tyenv, utrecacc) utrecbind ->
-      let ((varrng, varnm), astdef) = utrecbind in
+
+      let UTLetBinding{ identifier = (varrng, varnm); _ } = utrecbind in
       let tvuref =
         let tvid = fresh_free_id pre.quantifiability (Level.succ pre.level) in
         ref (MonoFree(tvid))
       in
       let tv = Updatable(tvuref) in
-      let rng = get_range astdef in
-      let beta = (rng, TypeVariable(tv)) in
+      let beta = (varrng, TypeVariable(tv)) in
       let pbeta = TypeConv.lift_poly beta in
       let evid = EvalVarID.fresh (varrng, varnm) in
       let tyenv =
@@ -1182,30 +1198,36 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
 
   (* Typechecks each body of the definitions: *)
   let* tupleacc =
-    utrecacc |> Alist.to_list |> foldM (fun tupleacc utrec ->
-      let (((_, varnm), utast1), beta, evid) = utrec in
-      let* (e1, ty1) = typecheck { pre with level = Level.succ pre.level; } tyenv utast1 in
+    utrecacc |> Alist.to_list |> foldM (fun tupleacc (utrecbind, beta, evid) ->
+
+      let UTLetBinding{ identifier = (rng_var, varnm); _ } = utrecbind in
+      let* (params, e_body, ty_body) = typecheck_single_let_binding pre tyenv utrecbind in
+
+      (* Constructs the target term and the type of the right-hand side expression of `let`: *)
+      let e1 =
+        List.fold_right (fun (evid_labmap, pat, _, _) e ->
+          Function(evid_labmap, PatternBranch(pat, e))
+        ) params e_body
+      in
+      let ty1 =
+        List.fold_right (fun (_, _, optrow, ty_pat) ty ->
+          (Range.dummy "typecheck_let_rec", FuncType(optrow, ty_pat, ty))
+        ) params ty_body
+      in
+
       begin
         match e1 with
         | Function(evid_labmap, patbr1) ->
             if LabelMap.cardinal evid_labmap = 0 then begin
               let* () = unify ty1 beta in
-(*
-              mntyopt |> Option.map (fun mnty ->
-                let tyin = decode_manual_type pre tyenv mnty in
-                unify tyin beta
-              ) |> Option.value ~default:();
-*)
               let recbind = LetRecBinding(evid, patbr1) in
               let tupleacc = Alist.extend tupleacc (varnm, beta, evid, recbind) in
               return tupleacc
             end else
-              let (rng1, _) = utast1 in
-              err (BreaksValueRestriction(rng1))
+              err (BreaksValueRestriction(rng_var))
 
         | _ ->
-            let (rng1, _) = utast1 in
-            err (BreaksValueRestriction(rng1))
+            err (BreaksValueRestriction(rng_var))
       end
     ) Alist.empty
   in
@@ -1219,22 +1241,85 @@ and typecheck_letrec (pre : pre) (tyenv : Typeenv.t) (utrecbinds : untyped_let_b
   return tuples
 
 
-and typecheck_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) : (Typeenv.t * EvalVarID.t * abstract_tree * mono_type) ok =
+and typecheck_let_nonrec ~(always_polymorphic : bool) (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_binding) : (var_name * poly_type * EvalVarID.t * abstract_tree) ok =
+  let open ResultMonad in
+
+  let UTLetBinding{ identifier = (_, varnm) as ident } = utletbind in
+  let* (params, e_body, ty_body) = typecheck_single_let_binding pre tyenv utletbind in
+
+  (* Constructs the target term and the type of the right-hand side expression of `let`: *)
+  let e1 =
+    List.fold_right (fun (evid_labmap, pat, _, _) e ->
+      Function(evid_labmap, PatternBranch(pat, e))
+    ) params e_body
+  in
+  let ty1 =
+    List.fold_right (fun (_, _, optrow, ty_pat) ty ->
+      (Range.dummy "typecheck_let_nonrec", FuncType(optrow, ty_pat, ty))
+    ) params ty_body
+  in
+
+  let evid = EvalVarID.fresh ident in
+  let pty1 =
+    if always_polymorphic || is_nonexpansive_expression e1 then
+    (* If `e1` is polymorphically typeable: *)
+      TypeConv.generalize pre.level (TypeConv.erase_range_of_type ty1)
+    else
+    (* If `e1` should be typed monomorphically: *)
+      TypeConv.lift_poly (TypeConv.erase_range_of_type ty1)
+  in
+  return (varnm, pty1, evid, e1)
+
+
+and typecheck_single_let_binding (pre : pre) (tyenv : Typeenv.t) (utletbind : untyped_let_binding) : ((EvalVarID.t LabelMap.t * pattern_tree * mono_row * mono_type) list * abstract_tree * mono_type, type_error) result =
+  let open ResultMonad in
+
+  let
+    UTLetBinding{
+      quantifier  = ManualQuantifier(typarams, rowparams);
+      parameters  = param_units;
+      return_type = mntyopt_ret_annot;
+      body        = utast_body;
+      _
+    } = utletbind
+  in
+
+  (* Adds type/row parameters: *)
+  let* (typarammap, _) = pre.type_parameters |> add_type_parameters (Level.succ pre.level) typarams in
+  let* (rowparammap, _) = pre.row_parameters |> add_row_parameters (Level.succ pre.level) rowparams in
+  let presub =
+    { pre with
+      level           = Level.succ pre.level;
+      type_parameters = typarammap;
+      row_parameters  = rowparammap;
+    }
+  in
+
+  (* Adds parameters and type-checks the body: *)
+  let* (tyenv, params) = typecheck_abstraction_with_row presub tyenv param_units in
+  let* (e_body, ty_body) = typecheck presub tyenv utast_body in
+
+  (* Checks that the return type annotation equals the inferred return type (if it exists): *)
+  let* () =
+    match mntyopt_ret_annot with
+    | Some(mnty_ret_annot) ->
+        let* ty_ret_annot = ManualTypeDecoder.decode_manual_type presub tyenv mnty_ret_annot in
+        unify ty_body ty_ret_annot
+
+    | None ->
+        return ()
+  in
+
+  return (params, e_body, ty_body)
+
+
+and typecheck_let_mutable (pre : pre) (tyenv : Typeenv.t) (ident : var_name ranged) (utastI : untyped_abstract_tree) : (var_name * poly_type * EvalVarID.t * abstract_tree) ok =
   let open ResultMonad in
   let* (eI, tyI) = typecheck { pre with quantifiability = Unquantifiable; } tyenv utastI in
   let (rng_var, varnm) = ident in
+  let pty_ref = TypeConv.lift_poly (rng_var, RefType(tyI)) in
   let evid = EvalVarID.fresh ident in
-  let tyenvI =
-    let ventry =
-      {
-        val_type  = TypeConv.lift_poly (rng_var, RefType(tyI));
-        val_name  = Some(evid);
-        val_stage = pre.stage;
-      }
-    in
-    tyenv |> Typeenv.add_value varnm ventry
-  in
-  return (tyenvI, evid, eI, tyI)
+  return (varnm, pty_ref, evid, eI)
 
 
 let main (config : typecheck_config) (stage : stage) (tyenv : Typeenv.t) (utast : untyped_abstract_tree) : (mono_type * abstract_tree) ok =

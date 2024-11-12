@@ -1,42 +1,42 @@
 
 open MyUtil
-open PackageSystemBase
+open LoggingUtil
 
 
-type config = {
-  show_full_path : bool;
-}
+let begin_to_typecheck_file (spec : logging_spec) (abspath_in : abs_path) =
+  if is_verbose spec then begin
+    print_endline " ---- ---- ---- ----";
+    Printf.printf "  type checking '%s' ...\n"
+      (show_path spec abspath_in)
+  end
 
 
-let show_path (config : config) (abspath : abs_path) =
-  let pathstr = get_abs_path_string abspath in
-  if config.show_full_path then pathstr else Filename.basename pathstr
+let begin_to_preprocess_file (spec : logging_spec) (abspath_in : abs_path) =
+  if is_verbose spec then begin
+    Printf.printf "  preprocessing '%s' ...\n"
+      (show_path spec abspath_in)
+  end
 
 
-let begin_to_typecheck_file (config : config) (abspath_in : abs_path) =
-  print_endline (" ---- ---- ---- ----");
-  print_endline ("  type checking '" ^ (show_path config abspath_in) ^ "' ...")
+let begin_to_eval_file (spec : logging_spec) (abspath_in : abs_path) =
+  if is_verbose spec then begin
+    Printf.printf "  evaluating '%s' ...\n"
+      (show_path spec abspath_in)
+  end
 
 
-let begin_to_preprocess_file (config : config) (abspath_in : abs_path) =
-  print_endline ("  preprocessing '" ^ (show_path config abspath_in) ^ "' ...")
+let begin_to_parse_file (spec : logging_spec) (abspath_in : abs_path) =
+  if is_verbose spec then begin
+    Printf.printf "  parsing '%s' ...\n"
+      (show_path spec abspath_in)
+  end
 
 
-let begin_to_eval_file (config : config) (abspath_in : abs_path) =
-  print_endline ("  evaluating '" ^ (show_path config abspath_in) ^ "' ...")
-
-
-let begin_to_parse_file (config : config) (abspath_in : abs_path) =
-  print_endline ("  parsing '" ^ (show_path config abspath_in) ^ "' ...")
-
-
-let pass_type_check opt =
-  match opt with
-  | None ->
-      print_endline ("  type check passed.")
-
-  | Some(str) ->
-      print_endline ("  type check passed. (" ^ str ^ ")")
+let pass_type_check (spec : logging_spec) (opt : string option) =
+  if is_verbose spec then
+    match opt with
+    | None      -> print_endline "  type check passed."
+    | Some(str) -> Printf.printf "  type check passed. (%s)\n" str
 
 
 let ordinal i =
@@ -47,127 +47,142 @@ let ordinal i =
     | 3 -> "rd"
     | _ -> "th"
   in
-  (string_of_int i) ^ suffix
+  Printf.sprintf "%d%s" i suffix
 
 
-let start_evaluation i =
-  print_endline (" ---- ---- ---- ----");
-  begin
+let start_evaluation (spec : logging_spec) (i : int) =
+  if is_not_quiet spec then begin
+    print_endline " ---- ---- ---- ----";
     if i <= 1 then
-      print_endline ("  evaluating texts ...")
+      print_endline "  evaluating texts ..."
     else
-      print_endline ("  evaluating texts (" ^ (ordinal i) ^ " trial) ...")
+      Printf.printf "  evaluating texts (%s trial) ...\n"
+        (ordinal i)
   end
 
 
-let end_evaluation () =
-  print_endline ("  evaluation done.")
+let end_evaluation (spec : logging_spec) =
+  if is_not_quiet spec then begin
+    print_endline "  evaluation done."
+  end
 
 
-let start_page_break () =
-  print_endline (" ---- ---- ---- ----");
-  print_endline ("  breaking contents into pages ...")
+let start_page_break (spec : logging_spec) =
+  if is_not_quiet spec then begin
+    print_endline " ---- ---- ---- ----";
+    print_endline "  breaking contents into pages ..."
+  end
 
 
-let needs_another_trial () =
-  print_endline ("  needs another trial for solving cross references...")
+let needs_another_trial (spec : logging_spec) =
+  if is_not_quiet spec then begin
+    print_endline "  needs another trial for solving cross references..."
+  end
 
 
-let achieve_count_max () =
-  print_endline ("  could not reach to fixpoint when resolving cross references.")
+let achieve_count_max (spec : logging_spec) =
+  if is_not_quiet spec then begin
+    print_endline "  could not reach a fixpoint when resolving cross references."
+  end
 
 
-let achieve_fixpoint unresolved_crossrefs =
-  if unresolved_crossrefs = [] then
-    print_endline ("  all cross references were solved.")
-  else
-    print_endline ("  some cross references were not solved: " ^ String.concat " " unresolved_crossrefs ^ ".")
+let achieve_fixpoint (spec : logging_spec) (unresolved_crossrefs : string list) =
+  match unresolved_crossrefs with
+  | [] ->
+      if is_not_quiet spec then begin
+        print_endline "  all cross references were solved."
+      end
+
+  | _ :: _ ->
+      print_endline "  [Warning] some cross references were not solved:";
+      unresolved_crossrefs |> List.iter (fun crossref ->
+        Printf.printf "  - %s\n" crossref
+      )
 
 
-let end_output (config : config) (file_name_out : abs_path) =
-  print_endline (" ---- ---- ---- ----");
-  print_endline ("  output written on '" ^ (show_path config file_name_out) ^ "'.")
+let end_output (spec : logging_spec) (file_name_out : abs_path) =
+  if is_not_quiet spec then begin
+    print_endline " ---- ---- ---- ----";
+    Printf.printf "  output written on '%s'.\n"
+      (show_path spec file_name_out)
+  end
 
 
-let target_file (config : config) (file_name_out : abs_path) =
-  print_endline (" ---- ---- ---- ----");
-  print_endline ("  target file: '" ^ (show_path config file_name_out) ^ "'")
+let target_file (spec : logging_spec) (file_name_out : abs_path) =
+  if is_not_quiet spec then begin
+    print_endline " ---- ---- ---- ----";
+    Printf.printf "  target file: '%s'\n"
+      (show_path spec file_name_out)
+  end
 
 
-let dump_file (config : config) ~(already_exists : bool) (dump_file : abs_path) =
-  if already_exists then
-    print_endline ("  dump file: '" ^ (show_path config dump_file) ^ "' (already exists)")
-  else
-    print_endline ("  dump file: '" ^ (show_path config dump_file) ^ "' (will be created)")
+let dump_file (spec : logging_spec) ~(already_exists : bool) (dump_file : abs_path) =
+  if is_not_quiet spec then begin
+    if already_exists then
+      Printf.printf "  dump file: '%s' (already exists)\n"
+        (show_path spec dump_file)
+    else
+      Printf.printf "  dump file: '%s' (will be created)\n"
+        (show_path spec dump_file)
+  end
 
 
-let lock_config_file (config : config) (abspath_lock_config : abs_path) =
-  Printf.printf "  lock file: '%s'\n" (show_path config abspath_lock_config)
+let deps_config_file (spec : logging_spec) (abspath_deps_config : abs_path) =
+  if is_not_quiet spec then begin
+    Printf.printf "  deps file: '%s'\n"
+      (show_path spec abspath_deps_config)
+  end
 
 
-let begin_to_embed_fonts () =
-  print_endline (" ---- ---- ---- ----");
-  print_endline ("  embedding fonts ...")
+let begin_to_embed_fonts (spec : logging_spec) =
+  if is_not_quiet spec then begin
+    print_endline " ---- ---- ---- ----";
+    print_endline "  embedding fonts ..."
+  end
 
 
-let begin_to_write_page () =
-  print_endline (" ---- ---- ---- ----");
-  print_endline ("  writing pages ...")
-
-
-let show_package_dependency_before_solving (dependencies_with_flags : (dependency_flag * package_dependency) list) =
-  Printf.printf "  package dependencies to solve:\n";
-  dependencies_with_flags |> List.iter (fun (flag, dep) ->
-    let PackageDependency{ package_name; spec } = dep in
-    match spec with
-    | RegisteredDependency{ version_requirement; _ } ->
-        let s_restr = SemanticVersion.requirement_to_string version_requirement in
-        let s_test_only =
-          match flag with
-          | SourceDependency   -> ""
-          | TestOnlyDependency -> ", test_only"
-        in
-        Printf.printf "  - %s (%s%s)\n" package_name s_restr s_test_only;
-  )
-
-
-let show_package_dependency_solutions (solutions : package_solution list) =
-  Printf.printf "  package dependency solutions:\n";
-    solutions |> List.iter (fun solution ->
-      let Lock.{ package_name; locked_version; _ } = solution.lock in
-      Printf.printf "  - %s %s\n" package_name (SemanticVersion.to_string locked_version)
-  )
-
-
-let end_lock_output (config : config) (file_name_out : abs_path) =
-  print_endline (" ---- ---- ---- ----");
-  print_endline ("  output written on '" ^ (show_path config file_name_out) ^ "'.")
+let begin_to_write_page (spec : logging_spec) =
+  if is_not_quiet spec then begin
+    print_endline " ---- ---- ---- ----";
+    print_endline "  writing pages ..."
+  end
 
 
 let warn_cmyk_image (file_name : abs_path) =
-  let config = { show_full_path = true } in (* TODO: make this changeable *)
-  print_endline ("  [Warning] (" ^ (show_path config file_name) ^ ") Jpeg images with CMYK color mode are not fully supported.");
-  print_endline ("  Please convert the image to a jpeg image with YCbCr (RGB) color model.")
+  let spec = { path_display_setting = FullPath; verbosity = NormalVerbosity } in (* TODO: make this changeable *)
+  Printf.printf "  [Warning] Jpeg images with CMYK color mode are not fully supported: '%s'\n"
+    (show_path spec file_name);
+  print_endline "  Please convert the image to a jpeg image with YCbCr (RGB) color model."
 
 
 let warn_noninjective_cmap (uch1 : Uchar.t) (uch2 : Uchar.t) (gidorg : Otfed.Value.glyph_id) =
-  Format.printf "  [Warning] Multiple Unicode code points (U+%04X and U+%04X) are mapped to the same GID %d.\n" (Uchar.to_int uch1) (Uchar.to_int uch2) gidorg
+  Printf.printf "  [Warning] Multiple Unicode code points (U+%04X and U+%04X) are mapped to the same GID %d.\n"
+    (Uchar.to_int uch1)
+    (Uchar.to_int uch2)
+    gidorg
 
 
 let warn_noninjective_ligature (gidorg_lig : Otfed.Value.glyph_id) =
-  Format.printf "  [Warning] GID %d is used as more than one kind of ligatures.\n" gidorg_lig
+  Printf.printf "  [Warning] GID %d is used as more than one kind of ligatures.\n"
+    gidorg_lig
 
 
-let warn_nonattachable_mark (gomark : Otfed.Value.glyph_id) (gobase : Otfed.Value.glyph_id) =
-  Format.printf "  [Warning] The combining diacritical mark of GID %d cannot be attached to the base glyph of GID %d.\n" gomark gobase
+let warn_nonattachable_mark (go_mark : Otfed.Value.glyph_id) (go_base : Otfed.Value.glyph_id) =
+  Printf.printf "  [Warning] The combining diacritical mark of GID %d cannot be attached to the base glyph of GID %d.\n"
+    go_mark
+    go_base
 
 
 let warn_no_glyph (fontname : string) (uch : Uchar.t) =
-  Format.printf "  [Warning] No glyph is provided for U+%04X by font `%s`.\n" (Uchar.to_int uch) fontname
+  Printf.printf "  [Warning] No glyph is provided for U+%04X by font '%s'.\n"
+    (Uchar.to_int uch)
+    fontname
 
 
 let warn_no_math_glyph (fontname : string) (uch : Uchar.t) =
-  Format.printf "  [Warning] No glyph is provided for U+%04X by math font `%s`.\n" (Uchar.to_int uch) fontname
+  Printf.printf "  [Warning] No glyph is provided for U+%04X by math font '%s'.\n"
+    (Uchar.to_int uch)
+    fontname
 
 
 let warn_number_sign_end rng =
@@ -176,17 +191,17 @@ let warn_number_sign_end rng =
 
 
 let warn_overfull_line (pageno : int) =
-  Format.printf "  [Warning] an overfull line occurs on page %d\n"
+  Printf.printf "  [Warning] an overfull line occurs on page %d\n"
     pageno
 
 
 let warn_underfull_line (pageno : int) =
-  Format.printf "  [Warning] an underfull line occurs on page %d\n"
+  Printf.printf "  [Warning] an underfull line occurs on page %d\n"
     pageno
 
 
 let warn_unreachable (pageno : int) =
-  Format.printf "  [Warning] a line unable to be broken into a paragraph occurs on page %d\n"
+  Printf.printf "  [Warning] a line unable to be broken into a paragraph occurs on page %d\n"
     pageno
 
 
@@ -209,26 +224,9 @@ let some_test_failed () =
   print_endline "! some test has failed."
 
 
-let lock_already_installed (lock_name : lock_name) (absdir : abs_path) =
-  Printf.printf "  '%s': already installed at '%s'\n" lock_name (get_abs_path_string absdir)
-
-
-let lock_cache_exists (lock_name : lock_name) (abspath_tarball : abs_path) =
-  Printf.printf "  cache for '%s' exists at '%s'\n" lock_name (get_abs_path_string abspath_tarball)
-
-
-let downloading_lock (lock_name : lock_name) (absdir : abs_path) =
-  Printf.printf "  downloading '%s' to '%s'...\n" lock_name (get_abs_path_string absdir)
-
-
-let report_canonicalized_url ~(url : string) ~(canonicalized_url : string) ~(hash_value : registry_hash_value) =
-  Printf.printf "  registry URL: '%s'\n" url;
-  Printf.printf "    canonicalized: '%s'\n" canonicalized_url;
-  Printf.printf "    hash value: '%s'\n" hash_value
-
 let warn_wide_column_cell_overrides_nonempty_cell () =
-  Format.printf "  [Warning] a non-empty cell was overridden by a cell that has more than one column span.\n"
+  print_endline "  [Warning] a non-empty cell was overridden by a cell that has more than one column span."
 
 
 let warn_wide_row_cell_overrides_nonempty_cell () =
-  Format.printf "  [Warning] a non-empty cell was overridden by a cell that has more than one row span.\n"
+  print_endline "  [Warning] a non-empty cell was overridden by a cell that has more than one row span."

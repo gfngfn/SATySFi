@@ -125,6 +125,69 @@ Context(ctx, { ctxsub with math_command = mcmd; })
         ~code:{|
 Context(ctx, { ctxsub with code_text_command = ctcmd; })
 |}
+    ; inst "PrimitiveSetHyphenationDictionary"
+        ~name:"set-hyphenation-dictionary"
+        ~type_:Type.(tHYPH @-> tCTX @-> tCTX)
+        ~fields:[
+        ]
+        ~params:[
+          param "hyph" ~type_:"hyphenation";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+Context({ ctx with hyphen_dictionary = hyph; }, ctxsub)
+|}
+    ; inst "LoadHyphenationDictionary"
+        ~name:"load-hyphenation-dictionary"
+        ~type_:Type.(tS @-> tHYPH)
+        ~fields:[
+        ]
+        ~params:[
+          param "abspathstr_hyph" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let abspath_hyph = validate_as_abs_path abspathstr_hyph in
+let hyph = LoadHyph.main abspath_hyph in
+BaseConstant(BCHyphenation(hyph))
+|}
+    ; inst "PrimitiveSetUnicodeCharDatabase"
+        ~name:"set-unicode-char-database"
+        ~type_:Type.(tUCD @-> tCTX @-> tCTX)
+        ~fields:[
+        ]
+        ~params:[
+          param "(script_map, line_break_map)" ~type_:"unicode_char_database";
+          param "(ctx, ctxsub)" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+Context({ ctx with script_map; line_break_map; }, ctxsub)
+|}
+    ; inst "PrimitiveLoadUnicodeCharDatabase"
+        ~name:"load-unicode-char-database"
+        ~type_:Type.(tS @-> tS @-> tS @-> tUCD)
+        ~fields:[
+        ]
+        ~params:[
+          param "abspathstr_script" ~type_:"string";
+          param "abspathstr_east_asian_width" ~type_:"string";
+          param "abspathstr_line_break" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let script_map =
+  ScriptDataMap.make_from_file
+    ~script:(validate_as_abs_path abspathstr_script)
+    ~east_asian_width:(validate_as_abs_path abspathstr_east_asian_width)
+in
+let line_break_map =
+  LineBreakDataMap.make_from_file
+    (validate_as_abs_path abspathstr_line_break)
+in
+BaseConstant(BCUnidata((script_map, line_break_map)))
+|}
     ; inst "PrimitiveGetLeftMathClass"
         ~name:"get-left-math-class"
         ~type_:Type.(tMB @-> tOPT tMATHCLS)
@@ -525,7 +588,8 @@ make_inline_boxes HorzBox.([ HorzPure(PHGFixedTabular{
         ~is_pdf_mode_primitive:true
         ~needs_runtime_config:true
         ~code:{|
-let abspath = MyUtil.make_abs_path (Filename.concat runtime_config.job_directory relpathstr) in
+(* TODO: fix the origin directory *)
+let abspath = validate_as_abs_path (Filename.concat runtime_config.job_directory relpathstr) in
 let imgkey = ImageInfo.add_pdf abspath pageno in
 make_image_key imgkey
 |}
@@ -540,7 +604,8 @@ make_image_key imgkey
         ~is_pdf_mode_primitive:true
         ~needs_runtime_config:true
         ~code:{|
-let abspath = MyUtil.make_abs_path (Filename.concat runtime_config.job_directory relpath) in
+(* TODO: fix the origin directory *)
+let abspath = validate_as_abs_path (Filename.concat runtime_config.job_directory relpath) in
 let imgkey = ImageInfo.add_image abspath in
 make_image_key imgkey
 |}
@@ -1391,7 +1456,7 @@ Context(HorzBox.({ ctx with font_scheme = font_scheme_new; }), ctxsub)
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let fontwr = HorzBox.get_font_with_ratio ctx script in
+let fontwr = ScriptHandler.get_font_with_ratio ctx script in
 make_font_with_ratio_value fontwr
 |}
     ; inst "PrimitiveSetMathFont"
@@ -1484,7 +1549,7 @@ Context(HorzBox.({ ctx with
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let langsys = HorzBox.get_language_system ctx script in
+let langsys = ScriptHandler.get_language_system ctx script in
 make_language_system_value langsys
 |}
     ; inst "PrimitiveSetTextColor"
@@ -2610,6 +2675,66 @@ make_float (flt1 *. flt2)
         ~is_text_mode_primitive:true
         ~code:{|
 make_float (flt1 /. flt2)
+|}
+    ; inst "PrimitiveFloatGreaterThan"
+        ~name:">."
+        ~type_:Type.(tFL @-> tFL @-> tB)
+        ~fields:[
+        ]
+        ~params:[
+          param "flt1" ~type_:"float";
+          param "flt2" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_bool (flt1 > flt2)
+|}
+    ; inst "PrimitiveFloatLessThan"
+        ~name:"<."
+        ~type_:Type.(tFL @-> tFL @-> tB)
+        ~fields:[
+        ]
+        ~params:[
+          param "flt1" ~type_:"float";
+          param "flt2" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_bool (flt1 < flt2)
+|}
+      (* Note: `x1 >=. x2` is not equivalent to `not (x1 <. x2)` due to NaNs.
+         TODO: make float-related primitives clearly conform to IEEE 754 *)
+    ; inst "PrimitiveFloatGreaterThanOrEqualTo"
+        ~name:">=."
+        ~type_:Type.(tFL @-> tFL @-> tB)
+        ~fields:[
+        ]
+        ~params:[
+          param "flt1" ~type_:"float";
+          param "flt2" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_bool (flt1 >= flt2)
+|}
+      (* Note: `x1 <=. x2` is not equivalent to `not (x1 >. x2)` due to NaNs.
+         TODO: make float-related primitives clearly conform to IEEE 754 *)
+    ; inst "PrimitiveFloatLessThanOrEqualTo"
+        ~name:"<=."
+        ~type_:Type.(tFL @-> tFL @-> tB)
+        ~fields:[
+        ]
+        ~params:[
+          param "flt1" ~type_:"float";
+          param "flt2" ~type_:"float";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+make_bool (flt1 <= flt2)
 |}
     ; inst "PrimitiveSin"
         ~name:"sin"

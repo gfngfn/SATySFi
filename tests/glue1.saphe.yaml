@@ -1,0 +1,42 @@
+saphe: "^0.1.0-alpha.1"
+satysfi: "^0.1.0-alpha.1"
+authors:
+  - "Takashi Suwa"
+registries:
+  - name: "default"
+    git:
+      url: "https://github.com/SATySFi/default-registry"
+      branch: "temp-dev-saphe"
+contents:
+  document: {}
+dependencies:
+  - used_as: "Stdlib"
+    registered:
+      registry: "default"
+      name: "stdlib"
+      requirement: "^0.0.1"
+  - used_as: "Math"
+    registered:
+      registry: "default"
+      name: "math"
+      requirement: "^0.0.1"
+  - used_as: "FontJunicode"
+    registered:
+      registry: "default"
+      name: "font-junicode"
+      requirement: "^0.0.1"
+  - used_as: "FontIpaEx"
+    registered:
+      registry: "default"
+      name: "font-ipa-ex"
+      requirement: "^0.0.1"
+  - used_as: "FontLatinModern"
+    registered:
+      registry: "default"
+      name: "font-latin-modern"
+      requirement: "^0.0.1"
+  - used_as: "FontLatinModernMath"
+    registered:
+      registry: "default"
+      name: "font-latin-modern-math"
+      requirement: "^0.0.1"

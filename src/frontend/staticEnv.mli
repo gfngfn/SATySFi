@@ -21,9 +21,12 @@ and functor_signature = {
   opaques  : quantifier;
   domain   : signature;
   codomain : signature abstracted;
-  closure  : (module_name ranged * untyped_module * type_environment) option;
+  closure  : functor_closure option;
 }
 [@@deriving show]
+
+and functor_closure =
+  (module_name ranged * untyped_module * type_environment)
 
 type value_entry = {
   val_name  : EvalVarID.t option;
@@ -85,6 +88,16 @@ module Typeenv : sig
   val find_signature : signature_name -> t -> (signature abstracted) option
 
   val fold_value : (var_name -> value_entry -> 'a -> 'a) -> t -> 'a -> 'a
+
+  (* This might be heavy. TODO: remove this by adopting Bochao–Ohori style static interpratation *)
+  val map :
+    v:(var_name -> value_entry -> value_entry) ->
+    a:(macro_name -> macro_entry -> macro_entry) ->
+    c:(constructor_name -> constructor_entry -> constructor_entry) ->
+    t:(type_name -> type_entry -> type_entry) ->
+    m:(module_name -> module_entry -> module_entry) ->
+    s:(signature_name -> signature abstracted -> signature abstracted) ->
+    t -> t
 
 end
 

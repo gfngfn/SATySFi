@@ -127,8 +127,11 @@ and functor_signature = {
   opaques  : quantifier;
   domain   : signature;
   codomain : signature abstracted;
-  closure  : (module_name ranged * untyped_module * type_environment) option;
+  closure  : functor_closure option;
 }
+
+and functor_closure =
+  (module_name ranged * untyped_module * type_environment)
 
 and module_entry = {
   mod_signature : signature;
@@ -225,6 +228,24 @@ module Typeenv = struct
 
   let fold_value (f : var_name -> value_entry -> 'a -> 'a) (tyenv : t) (acc : 'a) : 'a =
     ValueNameMap.fold (fun x (ventry, _is_used) -> f x ventry) tyenv.values acc
+
+
+  let map
+      ~v:(fv : var_name -> value_entry -> value_entry)
+      ~a:(fa : macro_name -> macro_entry -> macro_entry)
+      ~c:(fc : constructor_name -> constructor_entry -> constructor_entry)
+      ~t:(ft : type_name -> type_entry -> type_entry)
+      ~m:(fm : module_name -> module_entry -> module_entry)
+      ~s:(fs : signature_name -> signature abstracted -> signature abstracted)
+      (tyenv : t) : t =
+    {
+      values       = tyenv.values |> ValueNameMap.mapi (fun x (ventry, flag) -> (fv x ventry, flag));
+      types        = tyenv.types |> TypeNameMap.mapi ft;
+      modules      = tyenv.modules |> ModuleNameMap.mapi fm;
+      signatures   = tyenv.signatures |> SignatureNameMap.mapi fs;
+      constructors = tyenv.constructors |> ConstructorMap.mapi fc;
+      macros       = tyenv.macros |> MacroNameMap.mapi fa;
+    }
 
 end
 

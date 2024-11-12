@@ -6,8 +6,8 @@ open LineBreakBox
 
 
 let to_chunks (ctx : context_main) (uchs : Uchar.t list) (alw_last : break_opportunity) : break_opportunity * line_break_chunk list =
-  let (alw_first, tris) = LineBreakDataMap.append_break_opportunity uchs alw_last in
-  let scrs = ScriptDataMap.divide_by_script ctx tris in
+  let (alw_first, tris) = LineBreakDataMap.append_break_opportunity ctx.line_break_map uchs alw_last in
+  let scrs = ScriptHandler.divide_by_script ctx tris in
   let chunks = scrs |> List.map (fun chunkmain -> (ctx, chunkmain)) in
   (alw_first, chunks)
 
@@ -56,7 +56,7 @@ let pure_space ctx : lb_pure_box =
 
 
 let get_corrected_font_size ctx script =
-  let (_, font_ratio, _) = get_font_with_ratio ctx script in
+  let (_, font_ratio, _) = ScriptHandler.get_font_with_ratio ctx script in
   ctx.font_size *% font_ratio
 
 
@@ -136,7 +136,7 @@ let make_string_atom (hsinfo : horz_string_info) (uchsegs : uchar_segment list) 
 
 (* Makes an alphabetic word or a CJK character. *)
 let inner_string (ctx : context_main) (script : script) (uchsegs : uchar_segment list) : lb_box list =
-  let hsinfo = get_string_info ctx script in
+  let hsinfo = ScriptHandler.get_string_info ctx script in
     match LoadHyph.lookup ctx.left_hyphen_min ctx.right_hyphen_min ctx.hyphen_dictionary uchsegs with
     | LoadHyph.Single(uchsegs) ->
         [ LBPure(make_string_atom hsinfo uchsegs) ]
@@ -250,7 +250,7 @@ let space_between_chunks_pure info1 info2 : lb_pure_box list =
 (* Converts single CJK character, not depending on adjacent characters. *)
 let ideographic_single ctx script lbc (uchseg : uchar_segment) : lb_box list =
   let lphb_raw =
-    let hsinfo = get_string_info ctx script in
+    let hsinfo = ScriptHandler.get_string_info ctx script in
     LBPure(make_string_atom hsinfo [ uchseg ])
   in
   let hwkern = halfwidth_kern ctx script in
@@ -382,7 +382,7 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
           | AlphabeticChunk(script, lbcfirst, lbclast, uchsegs, alw) ->
               let opt = AccSome(((ctx, script, lbclast), alw)) in
               let lphblstmain =
-                let hsinfo = get_string_info ctx script in
+                let hsinfo = ScriptHandler.get_string_info ctx script in
                 [ make_string_atom hsinfo uchsegs ]
               in
               begin
@@ -403,7 +403,7 @@ let chunks_to_boxes_pure (script_before : script) (chunklst : line_break_chunk l
           | IdeographicChunk(script, lbc, uchseg, alw) ->
               let opt = AccSome(((ctx, script, lbc), alw)) in
               let lphblstmain =
-                let hsinfo = get_string_info ctx script in
+                let hsinfo = ScriptHandler.get_string_info ctx script in
                 [ make_string_atom hsinfo [ uchseg ] ]
               in
               begin

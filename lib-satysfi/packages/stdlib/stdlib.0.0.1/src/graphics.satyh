@@ -1,0 +1,83 @@
+use open Basic
+use Float
+use Point
+use Path
+use List
+use Length
+
+module Graphics :> sig
+  val overlay : list graphics -> graphics
+  val shift : length * length -> graphics -> graphics
+  val linear-transform : float -> float -> float -> float -> graphics -> graphics
+  val rotate : point -> float -> graphics -> graphics
+  val scale : point -> float -> float -> graphics -> graphics
+  val empty : graphics
+  val text-centering : point -> inline-boxes -> graphics
+  val text-leftward : point -> inline-boxes -> graphics
+  val text-rightward : point -> inline-boxes -> graphics
+  val arrow : length -> color -> length -> length -> length -> point -> point -> graphics
+  val dashed-arrow : length -> length * length * length -> color -> length -> length -> length -> point -> point -> graphics
+end = struct
+
+  val overlay = unite-graphics %PRIMITIVE
+
+  val shift = shift-graphics %PRIMITIVE
+
+  val linear-transform = linear-transform-graphics %PRIMITIVE
+
+  val rotate centpt angle gr =
+    let (centx, centy) = centpt in
+    let rad = angle *. Float.pi /. 180. in
+    gr |> shift (0pt -' centx, 0pt -' centy)
+       |> linear-transform (cos rad) (0. -. (sin rad)) (sin rad) (cos rad)
+       |> shift centpt
+
+  val scale centpt scalex scaley gr =
+    let (centx, centy) = centpt in
+    gr |> shift (0pt -' centx, 0pt -' centy)
+       |> linear-transform scalex 0. 0. scaley
+       |> shift centpt
+
+  val empty =
+    overlay []
+
+  val get-nonempty-graphics-bbox gr =
+    match get-graphics-bbox gr with
+    | None       -> abort-with-message `get-nonempty-graphics-bbox`
+    | Some(bbox) -> bbox
+    end
+
+  val text-centering pt ib =
+    let gr = draw-text pt ib in
+    let ((xmin, _), (xmax, _)) = get-nonempty-graphics-bbox gr in
+    let wid = xmax -' xmin in
+    shift (0pt -' wid *' 0.5, 0pt) gr
+
+  val text-rightward =
+    draw-text
+
+  val text-leftward pt ib =
+    let gr = draw-text pt ib in
+    let ((xmin, _), (xmax, _)) = get-nonempty-graphics-bbox gr in
+    let wid = xmax -' xmin in
+    shift (0pt -' wid, 0pt) gr
+
+  val arrow-scheme strokef color lenL lenM lenP ((x1, y1) as pt1) ((x2, y2) as pt2) =
+    let theta = Point.atan2 pt2 pt1 in
+    let (cx, cy) = (x2 +' lenL *' (cos theta), y2 +' lenL *' (sin theta)) in
+    let (mx, my) = (x2 +' lenM *' (cos theta), y2 +' lenM *' (sin theta)) in
+    let phi = theta +. Float.pi /. 2. in
+    let (p1, q1) = (cx +' lenP *' (cos phi), cy +' lenP *' (sin phi)) in
+    let (p2, q2) = (cx -' lenP *' (cos phi), cy -' lenP *' (sin phi)) in
+    overlay [
+      strokef color (Path.line pt1 (mx, my)),
+      fill color (Path.polygon pt2 [(p1, q1), (mx, my), (p2, q2)]),
+    ]
+
+  val arrow thkns =
+    arrow-scheme (stroke thkns)
+
+  val dashed-arrow thkns dash =
+    arrow-scheme (dashed-stroke thkns dash)
+
+end
