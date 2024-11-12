@@ -31,6 +31,8 @@ module List :> sig
   val persistent ~length 'a : list 'a -> int
   val persistent ~nth 'a : int -> list 'a -> option 'a
   val persistent ~is-empty 'a : list 'a -> bool
+  val persistent ~zip-exact 'a 'b : list 'a -> list 'b -> option (list ('a * 'b))
+  val persistent ~zip-shorter 'a 'b : list 'a -> list 'b -> list ('a * 'b)
 end = struct
 
   type t 'a = list 'a
@@ -236,5 +238,25 @@ end = struct
     | []     -> true
     | _ :: _ -> false
     end
+
+  val persistent ~zip-exact ys1 ys2 =
+    let rec aux acc ys1 ys2 =
+      match (ys1, ys2) with
+      | (x1 :: xs1, x2 :: xs2) -> aux ((x1, x2) :: acc) xs1 xs2
+      | ([], [])               -> Some(reverse acc)
+      | _                      -> None
+      end
+    in
+    aux [] ys1 ys2
+
+  val persistent ~zip-shorter ys1 ys2 =
+    let rec aux acc ys1 ys2 =
+      match (ys1, ys2) with
+      | (x1 :: xs1, x2 :: xs2) -> aux ((x1, x2) :: acc) xs1 xs2
+      | ([], _)                -> reverse acc
+      | (_, [])                -> reverse acc
+      end
+    in
+    aux [] ys1 ys2
 
 end
