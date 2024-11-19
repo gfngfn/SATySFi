@@ -10,6 +10,7 @@ type key = int
 type value_main =
   | PDFImage   of Pdf.t * Pdfpage.t
   | OtherImage of Images.format * Pdf.pdfobject * int * int * abs_path
+  | StubImage  of abs_path
 
 type value = tag * bbox * value_main
 
@@ -111,6 +112,15 @@ let add_image (abspath : abs_path) =
   let (key, tag) = generate_tag () in
   begin
     Hashtbl.add main_hash_table key (tag, bbox, OtherImage(imgfmt, colorspace, widdots, hgtdots, abspath));
+    key
+  end
+
+
+let add_stub (abspath : abs_path) =
+  let bbox = (0., 0., 100., 100.) in
+  let (key, tag) = generate_tag () in
+  begin
+    Hashtbl.add main_hash_table key (tag, bbox, StubImage(abspath));
     key
   end
 
