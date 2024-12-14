@@ -1,6 +1,6 @@
-(lang dune 3.16)
+(lang dune 3.17)
 
-(using menhir 2.1)
+(using menhir 3.0)
 
 (formatting
  (enabled_for dune))
