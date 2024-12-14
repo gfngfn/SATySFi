@@ -45,8 +45,7 @@
 
 (menhir
  (modules parser dataParser)
- (flags
-  (--table --explain)))
+ (flags (--table)))
 
 (rule
  (targets types.ml)
