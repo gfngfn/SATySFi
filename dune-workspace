@@ -1,0 +1,12 @@
+(lang dune 3.17)
+
+(lock_dir
+ (repositories upstream overlay satysfi-external satyrographos))
+
+(repository
+ (name satysfi-external)
+ (source "git+https://github.com/gfngfn/satysfi-external-repo.git"))
+
+(repository
+ (name satyrographos)
+ (source "git+https://github.com/na4zagin3/satyrographos-repo.git"))
