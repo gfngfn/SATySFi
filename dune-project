@@ -28,6 +28,10 @@
    (and
     (>= 4.12.0)
     (< 5.0.0)))
+  (alcotest
+   (and
+    :with-test
+    (>= 1.4.0)))
   (batteries
    (and
     (>= 3.6.0)
@@ -38,6 +42,10 @@
     (< 5.0.5)))
   (camlpdf
    (= 2.3.1+satysfi))
+  (cmdliner
+   (and
+    (>= 1.1.1)
+    (< 2.0)))
   (core_kernel
    (and
     (>= v0.15)
@@ -51,6 +59,10 @@
    (>= 20231231))
   (menhirLib
    (>= 20231231))
+  (ocamlgraph
+   (and
+    (>= 2.0.0)
+    (< 3.0)))
   (omd
    (and
     (>= 1.3.2)
@@ -71,5 +83,13 @@
    (and
     (>= 1.0.3)
     (< 2.0)))
+  (uunf
+   (and
+    (>= 15.0.0)
+    (< 16.0)))
+  (uuseg
+   (and
+    (>= 15.0.0)
+    (< 16.0)))
   (yojson-with-position
    (= 1.4.2+satysfi))))

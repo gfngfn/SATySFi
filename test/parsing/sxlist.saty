@@ -1,2 +1,6 @@
-let _ = {|}
-let _ = {|aa|bb|}
+module Sxlist = struct
+
+  val x = {|}
+  val y = {|aa|bb|}
+
+end

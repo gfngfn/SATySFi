@@ -1,36 +1,34 @@
+@require: pervasives
 @require: color
 @require: gr
 
-
-module FootnoteScheme : sig
-
+module FootnoteScheme :> sig
   val initialize : unit -> unit
   val start-page : unit -> unit
   val main : context -> (int -> inline-boxes) -> (int -> block-boxes) -> inline-boxes
   val main-no-number : context -> (unit -> inline-boxes) -> (unit -> block-boxes) -> inline-boxes
-
 end = struct
 
-  let-mutable footnote-ref <- 0
-  let-mutable first-footnote <- true
+  val mutable footnote-ref <- 0
+  val mutable first-footnote <- true
 
 
-  let bar-ratio = 0.5
+  val bar-ratio = 0.5
 
 
-  let start-page () =
+  val start-page () =
     first-footnote <- true
 
 
-  let generate-footnote-label n =
+  val generate-footnote-label n =
     `footnote:` ^ (arabic n)
 
 
-  let initialize () =
+  val initialize () =
     register-cross-reference `changed` `F`
 
 
-  let promote-another-trial () =
+  val promote-another-trial () =
     register-cross-reference `changed` `T`
 
 
@@ -39,7 +37,7 @@ end = struct
     | NonNumbered of (unit -> inline-boxes) * (unit -> block-boxes)
 
 
-  let main-scheme ctx info =
+  val main-scheme ctx info =
     let size = get-font-size ctx in
     let (label, ib-num, bb) =
       match info with
@@ -56,6 +54,7 @@ end = struct
           let ib-num = ibk () in
           let bb = bbk () in
           (`(non-numbered)`, ib-num, bb)
+      end
     in
     let bb-before =
       match get-cross-reference label with
@@ -66,7 +65,7 @@ end = struct
           let wid = get-text-width ctx *' bar-ratio in
           let ib =
             inline-graphics wid bar-top-margin bar-bottom-margin (fun (x, y) ->
-              [ stroke 0.5pt Color.black (Gr.line (x, y) (x +' wid, y)); ]
+              stroke 0.5pt Color.black (Gr.line (x, y) (x +' wid, y))
             ) ++ inline-fil
           in
           line-break false false (ctx |> set-paragraph-margin 0pt 0pt) ib
@@ -74,8 +73,9 @@ end = struct
       | _ ->
           let () = display-message (`'` ^ label ^ `': F`) in  % for debug
           block-skip (size *' 0.5)
+      end
     in
-      no-break
+      Pervasives.no-break
         (add-footnote (bb-before +++ bb) ++ ib-num
           ++ hook-page-break (fun _ _ -> (
             let () =
@@ -87,6 +87,7 @@ end = struct
                 | _ ->
                     let () = promote-another-trial () in
                     register-cross-reference label `T`
+                end
               else
                 match get-cross-reference label with
                 | Some(`F`) ->
@@ -95,15 +96,16 @@ end = struct
                 | _ ->
                     let () = promote-another-trial () in
                     register-cross-reference label `F`
+                end
             in
             first-footnote <- false)))
 
 
-  let main ctx ibf bbf =
+  val main ctx ibf bbf =
     main-scheme ctx (Numbered(ibf, bbf))
 
 
-  let main-no-number ctx ibk bbk =
+  val main-no-number ctx ibk bbk =
     main-scheme ctx (NonNumbered(ibk, bbk))
 
 end

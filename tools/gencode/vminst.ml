@@ -19,7 +19,7 @@
 
 let def =
   Instruction.(
-    [ inst "Concat"
+    [ inst "PrimitiveConcatString"
         ~name:"^"
         ~type_:Type.(tS @-> tS @-> tS)
         ~fields:[
@@ -35,24 +35,26 @@ make_string (s1 ^ s2)
 |}
     ; inst "PrimitiveSetMathVariantToChar"
         ~name:"set-math-variant-char"
-        ~type_:Type.(tMCCLS @-> tI @-> tI @-> tCTX @-> tCTX)
+        ~type_:Type.(tI @-> (tMCCLS @-> tI) @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
-          param "mccls" ~type_:"math_char_class";
-          param "cpfrom" ~type_:"int";
-          param "cpto" ~type_:"int";
+          param "cp_from" ~type_:"int";
+          param "value_selector";
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
+        ~needs_reducef:true
         ~code:{|
-let uchfrom = Uchar.of_int cpfrom in
-let uchto = Uchar.of_int cpto in
-let mcclsmap = ctx.HorzBox.math_variant_char_map in
-Context(HorzBox.({ ctx with
-  math_variant_char_map = mcclsmap |> MathVariantCharMap.add (uchfrom, mccls) (uchto, MathOrdinary);
-}), ctxsub)
+let uch_from = Uchar.of_int cp_from in
+let selector = make_math_variant_char_selector (reducef ~msg:"set-math-variant-char") value_selector in
+let ctx =
+  HorzBox.({ ctx with
+    math_variant_char_map = ctx.math_variant_char_map |> MathVariantCharMap.add uch_from selector;
+  })
+in
+make_context (ctx, ctxsub)
 |}
     ; inst "PrimitiveSetMathChar"
         ~name:"set-math-char"
@@ -87,21 +89,27 @@ Context(HorzBox.({ ctx with
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in let uchs = let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in uchs |> List.map (fun uch_from -> let (_, uch_to) = MathContext.convert_math_variant_char (ctx, ctxsub) uch_from in uch_to ) in make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchs))
+let ctx = HorzBox.({ ctx with math_char_class = mccls; }) in
+let uchs =
+  let uchs = InternalText.to_uchar_list (InternalText.of_utf8 s) in
+  uchs |> List.map (fun uch_from ->
+    let (_, uch_to) = Context.convert_math_variant_char (ctx, ctxsub) uch_from in
+    uch_to
+  )
+in
+make_string (InternalText.to_utf8 (InternalText.of_uchar_list uchs))
 |}
     ; inst "PrimitiveSetMathCommand"
         ~name:"set-math-command"
-        ~type_:Type.(tICMD tMATH @-> tCTX @-> tCTX)
+        ~type_:Type.(tICMD tMT @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
-          param "valuecmd";
+          param "mcmd" ~type_:"math_command_func";
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
-        ~needs_reducef:true
         ~code:{|
-let mcmd = get_math_command_func reducef valuecmd in
 Context(ctx, { ctxsub with math_command = mcmd; })
 |}
     ; inst "PrimitiveSetCodeTextCommand"
@@ -110,416 +118,402 @@ Context(ctx, { ctxsub with math_command = mcmd; })
         ~fields:[
         ]
         ~params:[
-          param "valuecmd";
+          param "ctcmd" ~type_:"code_text_command_func";
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
-        ~needs_reducef:true
         ~code:{|
-let ctcmd = get_code_text_command_func reducef valuecmd in
 Context(ctx, { ctxsub with code_text_command = ctcmd; })
 |}
-    ; inst "BackendMathVariantCharDirect"
-        ~name:"math-variant-char"
-        ~type_:Type.(tMATHCLS @-> tMCSTY @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "mathcls" ~type_:"math_class";
-          param "valuercd";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~code:{|
-let is_big = false in  (* temporary *)
-let mvsty = get_math_variant_style valuercd in
-MathValue(HorzBox.([MathPure(MathVariantCharDirect(mathcls, is_big, mvsty))]))
-|}
-    ; inst "BackendGetLeftMathClass"
+    ; inst "PrimitiveGetLeftMathClass"
         ~name:"get-left-math-class"
-        ~type_:Type.(tCTX @-> tMATH @-> tOPT tMATHCLS)
+        ~type_:Type.(tMB @-> tOPT tMATHCLS)
         ~fields:[
         ]
         ~params:[
-          param "ictx" ~type_:"context";
-          param "mathlst" ~type_:"math";
+          param "maths" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
-match mathlst with
+match maths with
 | [] ->
     Constructor("None", const_unit)
 
 | math :: _ ->
-    let mathcls = Math.get_left_math_kind ictx math in
+    let mathcls = Math.get_left_math_kind math in
     make_math_class_option_value mathcls
 |}
-    ; inst "BackendGetRightMathClass"
+    ; inst "PrimitiveGetRightMathClass"
         ~name:"get-right-math-class"
-        ~type_:Type.(tCTX @-> tMATH @-> tOPT tMATHCLS)
+        ~type_:Type.(tMB @-> tOPT tMATHCLS)
         ~fields:[
         ]
         ~params:[
-          param "ictx" ~type_:"context";
-          param "mathlst" ~type_:"math";
+          param "maths" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
-match List.rev mathlst with
+match List.rev maths with
 | [] ->
     Constructor("None", const_unit)
 
 | math :: _ ->
-    let mathcls = Math.get_right_math_kind ictx math in
+    let mathcls = Math.get_right_math_kind math in
     make_math_class_option_value mathcls
 |}
-    ; inst "BackendSpaceBetweenMaths"
+    ; inst "PrimitiveSpaceBetweenMaths"
         ~name:"space-between-maths"
-        ~type_:Type.(tCTX @-> tMATH @-> tMATH @-> tOPT tIB)
+        ~type_:Type.(tCTX @-> tMB @-> tMB @-> tOPT tIB)
         ~fields:[
         ]
         ~params:[
           param "ictx" ~type_:"context";
-          param "mathlst1" ~type_:"math";
-          param "mathlst2" ~type_:"math";
+          param "ms1" ~type_:"math_boxes";
+          param "ms2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let mathctx = MathContext.make ictx in
-let hbspaceopt = Math.space_between_maths mathctx mathlst1 mathlst2 in
-match hbspaceopt with
-| None          -> Constructor("None", const_unit)
-| Some(hbspace) -> Constructor("Some", make_horz [hbspace])
+let hb_space_opt = Math.space_between_maths ictx ms1 ms2 in
+match hb_space_opt with
+| None           -> Constructor("None", const_unit)
+| Some(hb_space) -> Constructor("Some", make_inline_boxes [ hb_space ])
 |}
-    ; inst "BackendMathConcat"
+    ; inst "PrimitiveMathConcat"
         ~name:"math-concat"
-        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
+        ~type_:Type.(tMB @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math";
-          param "mlst2" ~type_:"math";
+          param "ms1" ~type_:"math_boxes";
+          param "ms2" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
-MathValue(List.append mlst1 mlst2)
+make_math_boxes (List.append ms1 ms2)
 |}
-    ; inst "BackendMathGroup"
+    ; inst "PrimitiveMathGroup"
         ~name:"math-group"
-        ~type_:Type.(tMATHCLS @-> tMATHCLS @-> tMATH @-> tMATH)
+        ~type_:Type.(tMATHCLS @-> tMATHCLS @-> tMB @-> tMB)
         ~fields:[
         ]
         ~params:[
-          param "mathcls1" ~type_:"math_class";
-          param "mathcls2" ~type_:"math_class";
-          param "mlst" ~type_:"math";
+          param "left" ~type_:"math_class";
+          param "right" ~type_:"math_class";
+          param "inner" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
-MathValue([MathGroup(mathcls1, mathcls2, mlst)])
+make_math_boxes [ MathBoxGroup{ left; right; inner } ]
 |}
-    ; inst "BackendMathSuperscript"
+    ; inst "PrimitiveMathSup"
         ~name:"math-sup"
-        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
+        ~type_:Type.(tCTX @-> tMB @-> (tCTX @-> tMB) @-> tMB)
         ~fields:[
         ]
         ~params:[
-          param "mlst1" ~type_:"math";
-          param "mlst2" ~type_:"math";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~code:{|
-MathValue([MathSuperscript(mlst1, mlst2)])
-|}
-    ; inst "BackendMathSubscript"
-        ~name:"math-sub"
-        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "mlst1" ~type_:"math";
-          param "mlst2" ~type_:"math";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~code:{|
-MathValue([MathSubscript(mlst1, mlst2)])
-|}
-    ; inst "BackendMathFraction"
-        ~name:"math-frac"
-        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "mlst1" ~type_:"math";
-          param "mlst2" ~type_:"math";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~code:{|
-MathValue([MathFraction(mlst1, mlst2)])
-|}
-    ; inst "BackendMathRadical"
-        ~name:"math-radical"
-        ~type_:Type.(tOPT tMATH @-> tMATH @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "value1mopt";
-          param "mlst2" ~type_:"math";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~code:{|
-let mlst1opt = get_option get_math value1mopt in
-let radical = Primitives.default_radical in  (* temporary; should be variable *)
-match mlst1opt with
-| None        -> MathValue([MathRadical(radical, mlst2)])
-| Some(mlst1) -> MathValue([MathRadicalWithDegree(mlst1, mlst2)])
-|}
-    ; inst "BackendMathParen"
-        ~name:"math-paren"
-        ~type_:Type.(tPAREN @-> tPAREN @-> tMATH @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "valueparenL";
-          param "valueparenR";
-          param "mlst1" ~type_:"math";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~needs_reducef:true
-        ~code:{|
-let parenL = make_paren reducef valueparenL in
-let parenR = make_paren reducef valueparenR in
-MathValue([MathParen(parenL, parenR, mlst1)])
-|}
-    ; inst "BackendMathParenWithMiddle"
-        ~name:"math-paren-with-middle"
-        ~type_:Type.(tPAREN @-> tPAREN @-> tPAREN @-> tL tMATH @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "valueparenL";
-          param "valueparenR";
-          param "valuemiddle";
-          param "mlstlst" ~type_:"math_list";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~needs_reducef:true
-        ~code:{|
-let parenL = make_paren reducef valueparenL in
-let parenR = make_paren reducef valueparenR in
-let middle = make_paren reducef valuemiddle in
-MathValue([MathParenWithMiddle(parenL, parenR, middle, mlstlst)])
-|}
-    ; inst "BackendMathUpperLimit"
-        ~name:"math-upper"
-        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "mlst1" ~type_:"math";
-          param "mlst2" ~type_:"math";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~code:{|
-MathValue([MathUpperLimit(mlst1, mlst2)])
-|}
-    ; inst "BackendMathLowerLimit"
-        ~name:"math-lower"
-        ~type_:Type.(tMATH @-> tMATH @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "mlst1" ~type_:"math";
-          param "mlst2" ~type_:"math";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~code:{|
-MathValue([MathLowerLimit(mlst1, mlst2)])
-|}
-    ; inst "BackendMathPullInScripts"
-        ~name:"math-pull-in-scripts"
-        ~type_:Type.(tMATHCLS @-> tMATHCLS @-> (tOPT tMATH @-> tOPT tMATH @-> tMATH) @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "mathcls1" ~type_:"math_class";
-          param "mathcls2" ~type_:"math_class";
-          param "valuef";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~needs_reducef:true
-        ~code:{|
-let mlstf = make_pull_in_scripts reducef valuef in
-let mlst = [HorzBox.(MathPullInScripts(mathcls1, mathcls2, mlstf))] in
-MathValue(mlst)
-|}
-    ; inst "BackendMathChar"
-        ~name:"math-char"
-        ~type_:Type.(tMATHCLS @-> tS @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "mathcls" ~type_:"math_class";
-          param "uchlst" ~type_:"uchar_list";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~code:{|
-let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(false, uchlst))))] in
-MathValue(mlst)
-|}
-    ; inst "BackendMathBigChar"
-        ~name:"math-big-char"
-        ~type_:Type.(tMATHCLS @-> tS @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "mathcls" ~type_:"math_class";
-          param "uchlst" ~type_:"uchar_list";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~code:{|
-let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathChar(true, uchlst))))] in
-MathValue(mlst)
-|}
-    ; inst "BackendMathCharWithKern"
-        ~name:"math-char-with-kern"
-        ~type_:Type.(tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "mathcls" ~type_:"math_class";
-          param "uchlst" ~type_:"uchar_list";
-          param "valuekernfL";
-          param "valuekernfR";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~needs_reducef:true
-        ~code:{|
-let kernfL = make_math_char_kern_func reducef valuekernfL in
-let kernfR = make_math_char_kern_func reducef valuekernfR in
-let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(false, uchlst, kernfL, kernfR))))] in
-MathValue(mlst)
-|}
-    ; inst "BackendMathBigCharWithKern"
-        ~name:"math-big-char-with-kern"
-        ~type_:Type.(tMATHCLS @-> tS @-> mckf @-> mckf @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "mathcls" ~type_:"math_class";
-          param "uchlst" ~type_:"uchar_list";
-          param "valuekernfL";
-          param "valuekernfR";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
-        ~needs_reducef:true
-        ~code:{|
-let kernfL = make_math_char_kern_func reducef valuekernfL in
-let kernfR = make_math_char_kern_func reducef valuekernfR in
-let mlst = [HorzBox.(MathPure(MathElement(mathcls, MathCharWithKern(true, uchlst, kernfL, kernfR))))] in
-MathValue(mlst)
-|}
-    ; inst "BackendMathText"
-        ~name:"text-in-math"
-        ~type_:Type.(tMATHCLS @-> (tCTX @-> tIB) @-> tMATH)
-        ~fields:[
-        ]
-        ~params:[
-          param "mathcls" ~type_:"math_class";
-          param "valuef";
+          param "ictx" ~type_:"context";
+          param "base" ~type_:"math_boxes";
+          param "value_sup_f";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let hblstf ictx =
-  let valueh = reducef valuef [Context(ictx)] in
-  get_horz valueh
+let value_sup =
+  let ictx = Context.(ictx |> enter_script) in
+  reducef ~msg:"math-sup" value_sup_f [ Context(ictx) ]
 in
-MathValue(HorzBox.([MathPure(MathElement(mathcls, MathEmbeddedText(hblstf)))]))
+let sup = get_math_boxes value_sup in
+make_math_boxes [ MathBoxSuperscript{ context = ictx; base; sup } ]
 |}
-    ; inst "BackendMathColor"
-        ~name:"math-color"
-        ~type_:Type.(tCLR @-> tMATH @-> tMATH)
+    ; inst "PrimitiveMathSub"
+        ~name:"math-sub"
+        ~type_:Type.(tCTX @-> tMB @-> (tCTX @-> tMB) @-> tMB)
         ~fields:[
         ]
         ~params:[
-          param "color" ~type_:"color";
-          param "mlst" ~type_:"math";
+          param "ictx" ~type_:"context";
+          param "base" ~type_:"math_boxes";
+          param "value_sub_f";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let value_sub =
+  let ictx = Context.(ictx |> enter_script) in
+  reducef ~msg:"math-sup" value_sub_f [ Context(ictx) ]
+in
+let sub = get_math_boxes value_sub in
+make_math_boxes [ MathBoxSubscript{ context = ictx; base; sub } ]
+|}
+    ; inst "PrimitiveMathFrac"
+        ~name:"math-frac"
+        ~type_:Type.(tCTX @-> tMB @-> tMB @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "ictx" ~type_:"context";
+          param "ms1" ~type_:"math_boxes";
+          param "ms2" ~type_:"math_boxes";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+make_math_boxes [ MathBoxFraction{ context = ictx; numerator = ms1; denominator = ms2 } ]
+|}
+    ; inst "PrimitiveMathRadical"
+        ~name:"math-radical"
+        ~type_:Type.(tCTX @-> tOPT tMB @-> tMB @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "context" ~type_:"context";
+          param "value1mopt";
+          param "inner" ~type_:"math_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-MathValue(HorzBox.([MathChangeContext(MathChangeColor(color), mlst)]))
+let degree = get_option get_math_boxes value1mopt in
+let radical = Primitives.default_radical in  (* temporary; should be changeable *)
+make_math_boxes [ MathBoxRadical{ context; radical; degree; inner } ]
 |}
-    ; inst "BackendMathCharClass"
-        ~name:"math-char-class"
-        ~type_:Type.(tMCCLS @-> tMATH @-> tMATH)
+    ; inst "PrimitiveMathParen"
+        ~name:"math-paren"
+        ~type_:Type.(tCTX @-> tPAREN @-> tPAREN @-> tMB @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "context" ~type_:"context";
+          param "value_left";
+          param "value_right";
+          param "inner" ~type_:"math_boxes";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let left = make_paren (reducef ~msg:"math-paren 1") value_left in
+let right = make_paren (reducef ~msg:"math-paren 2") value_right in
+make_math_boxes [ MathBoxParen{ context; left; right; inner } ]
+|}
+    ; inst "PrimitiveMathParenWithMiddle"
+        ~name:"math-paren-with-middle"
+        ~type_:Type.(tCTX @-> tPAREN @-> tPAREN @-> tPAREN @-> tL tMB @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "context" ~type_:"context";
+          param "value_parenL";
+          param "value_parenR";
+          param "value_middle";
+          param "value_mss";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let left = make_paren (reducef ~msg:"math-paren-with-middle 1") value_parenL in
+let right = make_paren (reducef ~msg:"math-paren-with-middle 2") value_parenR in
+let middle = make_paren (reducef ~msg:"math-paren-with-middle 3") value_middle in
+let inner = get_list get_math_boxes value_mss in
+make_math_boxes [ MathBoxParenWithMiddle{ context; left; right; middle; inner } ]
+|}
+    ; inst "PrimitiveMathUpper"
+        ~name:"math-upper"
+        ~type_:Type.(tCTX @-> tMB @-> (tCTX @-> tMB) @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "ictx" ~type_:"context";
+          param "base" ~type_:"math_boxes";
+          param "value_upper_f";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let value_upper =
+  let ictx = Context.(ictx |> enter_script) in
+  reducef ~msg:"math-sup" value_upper_f [ Context(ictx) ]
+in
+let upper = get_math_boxes value_upper in
+make_math_boxes [ MathBoxUpperLimit{ context = ictx; base; upper } ]
+|}
+    ; inst "PrimitiveMathLower"
+        ~name:"math-lower"
+        ~type_:Type.(tCTX @-> tMB @-> (tCTX @-> tMB) @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "ictx" ~type_:"context";
+          param "base" ~type_:"math_boxes";
+          param "value_lower_f";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let value_lower =
+  let ictx = Context.(ictx |> enter_script) in
+  reducef ~msg:"math-sup" value_lower_f [ Context(ictx) ]
+in
+let lower = get_math_boxes value_lower in
+make_math_boxes [ MathBoxLowerLimit{ context = ictx; base; lower } ]
+|}
+    ; inst "PrimitiveMathChar"
+        ~name:"math-char"
+        ~type_:Type.(tCTX @-> tMATHCLS @-> tS @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "ictx" ~type_:"context";
+          param "mathcls" ~type_:"math_class";
+          param "uchs" ~type_:"uchar_list";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let ma = MathChar{ context = ictx; is_big = false; chars = uchs } in
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
+|}
+    ; inst "PrimitiveMathBigChar"
+        ~name:"math-big-char"
+        ~type_:Type.(tCTX @-> tMATHCLS @-> tS @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "ictx" ~type_:"context";
+          param "mathcls" ~type_:"math_class";
+          param "uchs" ~type_:"uchar_list";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let ma = MathChar{ context = ictx; is_big = true; chars = uchs } in
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
+|}
+    ; inst "PrimitiveMathCharWithKern"
+        ~name:"math-char-with-kern"
+        ~type_:Type.(tCTX @-> tMATHCLS @-> tS @-> mckf @-> mckf @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "ictx" ~type_:"context";
+          param "mathcls" ~type_:"math_class";
+          param "uchs" ~type_:"uchar_list";
+          param "value_left_kern";
+          param "value_right_kern";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let left_kern = make_math_char_kern_func (reducef ~msg:"math-char-with-kern 1") value_left_kern in
+let right_kern = make_math_char_kern_func (reducef ~msg:"math-char-with-kern 2") value_right_kern in
+let ma = MathCharWithKern{ context = ictx; is_big = false; chars = uchs; left_kern; right_kern } in
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
+|}
+    ; inst "PrimitiveMathBigCharWithKern"
+        ~name:"math-big-char-with-kern"
+        ~type_:Type.(tCTX @-> tMATHCLS @-> tS @-> mckf @-> mckf @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "ictx" ~type_:"context";
+          param "mathcls" ~type_:"math_class";
+          param "uchs" ~type_:"uchar_list";
+          param "value_left_kern";
+          param "value_right_kern";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~needs_reducef:true
+        ~code:{|
+let left_kern = make_math_char_kern_func (reducef ~msg:"math-big-char-with-kern 1") value_left_kern in
+let right_kern = make_math_char_kern_func (reducef ~msg:"math-big-char-with-kern 2") value_right_kern in
+let ma = MathCharWithKern{ context = ictx; is_big = true; chars = uchs; left_kern; right_kern } in
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = ma } ]
+|}
+    ; inst "PrimitiveEmbedInlineToMath"
+        ~name:"embed-inline-to-math"
+        ~type_:Type.(tMATHCLS @-> tIB @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "mathcls" ~type_:"math_class";
+          param "ibs" ~type_:"inline_boxes";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+make_math_boxes [ MathBoxAtom{ kind = mathcls; main = MathEmbeddedInline(ibs) } ]
+|}
+    ; inst "PrimitiveSetMathCharClass"
+        ~name:"set-math-char-class"
+        ~type_:Type.(tMCCLS @-> tCTX @-> tCTX)
         ~fields:[
         ]
         ~params:[
           param "mccls" ~type_:"math_char_class";
-          param "mlst" ~type_:"math";
+          param "ictx" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
-        ~is_text_mode_primitive:true
         ~code:{|
-MathValue(HorzBox.([MathChangeContext(MathChangeMathCharClass(mccls), mlst)]))
+let ictx = Context.(ictx |> set_math_char_class mccls) in
+Context(ictx)
 |}
-    ; inst "BackendEmbeddedMath"
-        ~name:"embed-math"
-        ~type_:Type.(tCTX @-> tMATH @-> tIB)
+    ; inst "PrimitiveGetMathCharClass"
+        ~name:"get-math-char-class"
+        ~type_:Type.(tCTX @-> tMCCLS)
         ~fields:[
         ]
         ~params:[
           param "ictx" ~type_:"context";
-          param "mlst" ~type_:"math";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let mathctx = MathContext.make ictx in
-let hblst = Math.main mathctx mlst in
-make_horz hblst
+let mccls = Context.(ictx |> math_char_class) in
+make_math_char_class mccls
 |}
-    ; inst "BackendTabular"
-        ~name:"tabular"
-        ~type_:Type.((tL (tL tCELL)) @-> tRULESF @-> tIB)
+    ; inst "PrimitiveEmbedMath"
+        ~name:"embed-math"
+        ~type_:Type.(tCTX @-> tMB @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "valuetabular";
-          param "valuerulesf";
+          param "ictx" ~type_:"context";
+          param "mlst" ~type_:"math_boxes";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let ibs = Math.main ictx mlst in
+make_inline_boxes ibs
+|}
+    ; inst "PrimitiveTabular"
+        ~name:"tabular"
+        ~type_:Type.((tL (tL tCELL)) @-> ((tL tLN) @-> (tL tLN) @-> tGR) @-> tIB)
+        ~fields:[
+        ]
+        ~params:[
+          param "value_tabular";
+          param "value_rulesf";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let tabular = get_list (get_list get_cell) valuetabular in
-let (imtabular, widlst, lenlst, wid, hgt, dpt) = Tabular.main tabular in
+let tabular = get_list (get_list get_cell) value_tabular in
+let (imtabular, wids, lens, width, height, depth) = Tabular.main tabular in
 let rulesf xs ys =
-  let valuexs = make_length_list xs in
-  let valueys = make_length_list ys in
-  let valueret = reducef valuerulesf [valuexs; valueys] in
-  graphics_of_list valueret
+  let value_xs = make_list make_length xs in
+  let value_ys = make_list make_length ys in
+  let value = reducef ~msg:"tabular" value_rulesf [ value_xs; value_ys ] in
+  get_graphics value
 in
-make_horz (HorzBox.([HorzPure(PHGFixedTabular(wid, hgt, dpt, imtabular, widlst, lenlst, rulesf))]))
+make_inline_boxes HorzBox.([ HorzPure(PHGFixedTabular{
+  width;
+  height;
+  depth;
+  rows          = imtabular;
+  column_widths = wids;
+  row_heights   = lens;
+  rule_graphics = rulesf;
+})])
 |}
-    ; inst "BackendRegisterPdfImage"
+    ; inst "PrimitiveLoadPdfImage"
         ~name:"load-pdf-image"
         ~type_:Type.(tS @-> tI @-> tIMG)
         ~fields:[
@@ -534,7 +528,7 @@ let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory (
 let imgkey = ImageInfo.add_pdf abspath pageno in
 make_image_key imgkey
 |}
-    ; inst "BackendRegisterOtherImage"
+    ; inst "PrimitiveLoadImage"
         ~name:"load-image"
         ~type_:Type.(tS @-> tIMG)
         ~fields:[
@@ -548,26 +542,21 @@ let abspath = MyUtil.make_abs_path (Filename.concat (OptionState.job_directory (
 let imgkey = ImageInfo.add_image abspath in
 make_image_key imgkey
 |}
-    ; inst "BackendUseImageByWidth"
+    ; inst "PrimitiveUseImageByWidth"
         ~name:"use-image-by-width"
         ~type_:Type.(tIMG @-> tLN @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "valueimg";
-          param "wid" ~type_:"length";
+          param "key" ~type_:"image";
+          param "width" ~type_:"length";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-match valueimg with
-| BaseConstant(BCImageKey(imgkey)) ->
-    let hgt = ImageInfo.get_height_from_width imgkey wid in
-    make_horz (HorzBox.([HorzPure(PHGFixedImage(wid, hgt, imgkey))]))
-
-| _ ->
-    report_bug_vm "BackendUseImage"
+let height = ImageInfo.get_height_from_width key width in
+make_inline_boxes HorzBox.([ HorzPure(PHGFixedImage{ width; height; key }) ])
 |}
-    ; inst "BackendHookPageBreak"
+    ; inst "PrimitiveHookPageBreak"
         ~name:"hook-page-break"
         ~type_:Type.((tPBINFO @-> tPT @-> tU) @-> tIB)
         ~fields:[
@@ -578,10 +567,10 @@ match valueimg with
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let hookf = make_hook reducef hookf in
-make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
+let hookf = make_hook (reducef ~msg:"hook-page-break") hookf in
+make_inline_boxes HorzBox.([HorzPure(PHGHookPageBreak(hookf))])
 |}
-    ; inst "BackendHookPageBreakBlock"
+    ; inst "PrimitiveHookPageBreakBlock"
         ~name:"hook-page-break-block"
         ~type_:Type.((tPBINFO @-> tPT @-> tU) @-> tBB)
         ~fields:[
@@ -592,10 +581,10 @@ make_horz (HorzBox.([HorzPure(PHGHookPageBreak(hookf))]))
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let hookf = make_hook reducef hookf in
-make_vert (HorzBox.([VertHookPageBreak(hookf)]))
+let hookf = make_hook (reducef ~msg:"hook-page-break-block") hookf in
+make_block_boxes HorzBox.([VertHookPageBreak(hookf)])
 |}
-    ; inst "PathUnite"
+    ; inst "PrimitiveUnitePath"
         ~name:"unite-path"
         ~type_:Type.(tPATH @-> tPATH @-> tPATH)
         ~fields:[
@@ -608,7 +597,7 @@ make_vert (HorzBox.([VertHookPageBreak(hookf)]))
         ~code:{|
 make_path (List.append pathlst1 pathlst2)
 |}
-    ; inst "PathShift"
+    ; inst "PrimitiveShiftPath"
         ~name:"shift-path"
         ~type_:Type.(tPT @-> tPATH @-> tPATH)
         ~fields:[
@@ -621,7 +610,7 @@ make_path (List.append pathlst1 pathlst2)
         ~code:{|
 make_path (List.map (shift_path ptshift) pathlst)
 |}
-    ; inst "PathLinearTransform"
+    ; inst "PrimitiveLinearTransformPath"
         ~name:"linear-transform-path"
         ~type_:Type.(tFL @-> tFL @-> tFL @-> tFL @-> tPATH @-> tPATH)
         ~fields:[
@@ -631,13 +620,13 @@ make_path (List.map (shift_path ptshift) pathlst)
           param "b" ~type_:"float";
           param "c" ~type_:"float";
           param "d" ~type_:"float";
-          param "pathlst" ~type_:"path_value";
+          param "paths" ~type_:"path_value";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_path (List.map (linear_transform_path ((a, b), (c, d))) pathlst)
+make_path (List.map (linear_transform_path (a, b, c, d)) paths)
 |}
-    ; inst "PathGetBoundingBox"
+    ; inst "PrimitiveGetPathBbox"
         ~name:"get-path-bbox"
         ~type_:Type.(tPATH @-> tPROD [tPT; tPT])
         ~fields:[
@@ -652,7 +641,7 @@ let value1 = make_point_value ptmin in
 let value2 = make_point_value ptmax in
 Tuple([value1; value2])
 |}
-    ; inst "PrePathBeginning"
+    ; inst "PrimitiveStartPath"
         ~name:"start-path"
         ~type_:Type.(tPT @-> tPRP)
         ~fields:[
@@ -664,7 +653,7 @@ Tuple([value1; value2])
         ~code:{|
 make_prepath (PrePath.start pt0)
 |}
-    ; inst "PrePathLineTo"
+    ; inst "PrimitiveLineTo"
         ~name:"line-to"
         ~type_:Type.(tPT @-> tPRP @-> tPRP)
         ~fields:[
@@ -677,7 +666,7 @@ make_prepath (PrePath.start pt0)
         ~code:{|
 make_prepath (prepath |> PrePath.line_to pt1)
 |}
-    ; inst "PrePathCubicBezierTo"
+    ; inst "PrimitiveBezierTo"
         ~name:"bezier-to"
         ~type_:Type.(tPT @-> tPT @-> tPT @-> tPRP @-> tPRP)
         ~fields:[
@@ -692,7 +681,7 @@ make_prepath (prepath |> PrePath.line_to pt1)
         ~code:{|
 make_prepath (prepath |> PrePath.bezier_to ptS ptT pt1)
 |}
-    ; inst "PrePathTerminate"
+    ; inst "PrimitiveTerminatePath"
         ~name:"terminate-path"
         ~type_:Type.(tPRP @-> tPATH)
         ~fields:[
@@ -704,7 +693,7 @@ make_prepath (prepath |> PrePath.bezier_to ptS ptT pt1)
         ~code:{|
 make_path ([prepath |> PrePath.terminate])
 |}
-    ; inst "PrePathCloseWithLine"
+    ; inst "PrimitiveCloseWithLine"
         ~name:"close-with-line"
         ~type_:Type.(tPRP @-> tPATH)
         ~fields:[
@@ -716,7 +705,7 @@ make_path ([prepath |> PrePath.terminate])
         ~code:{|
 make_path ([prepath |> PrePath.close_with_line])
 |}
-    ; inst "PrePathCloseWithCubicBezier"
+    ; inst "PrimitiveCloseWithBezier"
         ~name:"close-with-bezier"
         ~type_:Type.(tPT @-> tPT @-> tPRP @-> tPATH)
         ~fields:[
@@ -730,53 +719,56 @@ make_path ([prepath |> PrePath.close_with_line])
         ~code:{|
 make_path ([prepath |> PrePath.close_with_bezier ptS ptT])
 |}
-    ; inst "HorzConcat"
+    ; inst "PrimitiveConcatInline"
         ~name:"++"
         ~type_:Type.(tIB @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "hblst1" ~type_:"horz";
-          param "hblst2" ~type_:"horz";
+          param "ibs1" ~type_:"inline_boxes";
+          param "ibs2" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz (List.append hblst1 hblst2)
+make_inline_boxes (List.append ibs1 ibs2)
 |}
-    ; inst "VertConcat"
+    ; inst "PrimitiveConcatBlock"
         ~name:"+++"
         ~type_:Type.(tBB @-> tBB @-> tBB)
         ~fields:[
         ]
         ~params:[
-          param "vblst1" ~type_:"vert";
-          param "vblst2" ~type_:"vert";
+          param "bbs1" ~type_:"block_boxes";
+          param "bbs2" ~type_:"block_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_vert (List.append vblst1 vblst2)
+make_block_boxes (List.append bbs1 bbs2)
 |}
-    ; inst "HorzLex"
+    ; inst "PrimitiveReadInline"
         ~name:"read-inline"
         ~type_:Type.(tCTX @-> tIT @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "valuectx";
+          param "ictx" ~type_:"context";
           param "value1";
         ]
         ~is_pdf_mode_primitive:true
         ~code_interp:{|
-match value1 with
-| InputHorzClosure(imihlst, envi) -> interpret_pdf_mode_intermediate_input_horz envi valuectx imihlst
-| _                               -> report_bug_value "HorzLex" value1
+let ihvs = get_inline_text value1 in
+read_pdf_mode_inline_text ictx ihvs
 |}
         ~code:{|
+let _ = ictx in
+let _ = value1 in
+failwith "TODO: PrimitiveReadInline" (*
 match value1 with
-| CompiledInputHorzClosure(imihlst, envi) -> exec_pdf_mode_intermediate_input_horz envi valuectx imihlst
-| _                                       -> report_bug_vm "HorzLex"
+| CompiledInlineTextClosure(imihlst, envi) -> exec_pdf_mode_intermediate_inline_text envi ictx imihlst
+| _                                        -> report_bug_vm "PrimitiveReadInline"
+*)
 |}
-    ; inst "VertLex"
+    ; inst "PrimitiveReadBlock"
         ~name:"read-block"
         ~type_:Type.(tCTX @-> tBT @-> tBB)
         ~fields:[
@@ -787,76 +779,121 @@ match value1 with
         ]
         ~is_pdf_mode_primitive:true
         ~code_interp:{|
-match value1 with
-| InputVertClosure(imivlst, envi) -> interpret_pdf_mode_intermediate_input_vert envi valuectx imivlst
-| _                               -> report_bug_value "VertLex" value1
+let bts = get_block_text value1 in
+read_pdf_mode_block_text valuectx bts
 |}
         ~code:{|
 match value1 with
-| CompiledInputVertClosure(imivlst, envi) -> exec_pdf_mode_intermediate_input_vert envi valuectx imivlst
-| _                                       -> report_bug_vm "VertLex"
+| CompiledBlockTextClosure(imivlst, envi) -> exec_pdf_mode_intermediate_block_text envi valuectx imivlst
+| _                                       -> report_bug_vm "PrimitiveReadBlock"
 |}
-    ; inst "TextHorzLex"
+    ; inst "PrimitiveReadMath"
+        ~name:"read-math"
+        ~type_:Type.(tCTX @-> tMT @-> tMB)
+        ~fields:[
+        ]
+        ~params:[
+          param "ictx" ~type_:"context";
+          param "value1";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code_interp:{|
+let imvs = get_math_text ~msg:"PrimitiveReadMath" value1 in
+let mbs = read_pdf_mode_math_text ictx imvs in
+make_math_boxes mbs
+|}
+        ~code:{|
+let _ = ictx in
+let _ = value1 in
+failwith "TODO: PrimitiveReadMath" (*
+match value1 with
+| CompiledInputMathClosure(imims, envi) -> exec_pdf_mode_intermediate_math_text envi ictx imims
+| _                                     -> report_bug_vm "PrimitiveReadMath"
+*)
+|}
+    ; inst "PrimitiveStringifyInline"
         ~name:"stringify-inline"
         ~type_:Type.(tTCTX @-> tIT @-> tS)
         ~fields:[
         ]
         ~params:[
-          param "valuetctx";
-          param "value1";
+          param "value_tctx";
+          param "its" ~type_:"inline_text";
         ]
         ~is_text_mode_primitive:true
         ~code_interp:{|
-match value1 with
-| InputHorzClosure(imihlst, envi) -> interpret_text_mode_intermediate_input_horz envi valuetctx imihlst
-| _                               -> report_bug_value "TextHorzLex" value1
+read_text_mode_inline_text value_tctx its
 |}
         ~code:{|
+let _ = value_tctx in
+let _ = its in
+failwith "TODO: PrimitiveStringifyInline" (*
 match value1 with
-| CompiledInputHorzClosure(imihlst, envi) -> exec_text_mode_intermediate_input_horz envi valuetctx imihlst
-| _                                       -> report_bug_vm "TextHorzLex"
+| CompiledInlineTextClosure(imihlst, envi) -> exec_text_mode_intermediate_inline_text envi valuetctx imihlst
+| _                                        -> report_bug_vm "PrimitiveStringifyInline"
+*)
 |}
-    ; inst "TextVertLex"
+    ; inst "PrimitiveStringifyBlock"
         ~name:"stringify-block"
         ~type_:Type.(tTCTX @-> tBT @-> tS)
         ~fields:[
         ]
         ~params:[
-          param "valuetctx";
-          param "value1";
+          param "value_tctx";
+          param "bts" ~type_:"block_text";
         ]
         ~is_text_mode_primitive:true
         ~code_interp:{|
-match value1 with
-| InputVertClosure(imivlst, envi) -> interpret_text_mode_intermediate_input_vert envi valuetctx imivlst
-| _                               -> report_bug_value "TextVertLex" value1
+read_text_mode_block_text value_tctx bts
 |}
         ~code:{|
+let _ = value_tctx in
+let _ = bts in
+failwith "TODO: PrimitiveStringifyBlock" (*
 match value1 with
-| CompiledInputVertClosure(imivlst, envi) -> exec_text_mode_intermediate_input_vert envi valuetctx imivlst
-| _                                       -> report_bug_vm "TextVertLex"
+| CompiledBlockTextClosure(imivlst, envi) -> exec_text_mode_intermediate_block_text envi valuetctx imivlst
+| _                                       -> report_bug_vm "PrimitiveStringifyBlock"
+*)
 |}
-    ; inst "TextDeepenIndent"
+    ; inst "PrimitiveStringifyMath"
+        ~name:"stringify-math"
+        ~type_:Type.(tTCTX @-> tMT @-> tS)
+        ~fields:[
+        ]
+        ~params:[
+          param "value_tctx";
+          param "imvs" ~type_:"math_text ~msg:\"PrimitiveStringifyMath\"";
+        ]
+        ~is_text_mode_primitive:true
+        ~code_interp:{|
+read_text_mode_math_text value_tctx imvs
+|}
+        ~code:{|
+let _ = value_tctx in
+let _ = imvs in
+failwith "TODO: PrimitiveStringifyMath"
+|}
+    ; inst "PrimitiveDeepenIndent"
         ~name:"deepen-indent"
         ~type_:Type.(tI @-> tTCTX @-> tTCTX)
         ~fields:[
         ]
         ~params:[
           param "i" ~type_:"int";
-          param "tctx" ~type_:"text_mode_context";
+          param "(tctx, ctxsub)" ~type_:"text_mode_context";
         ]
         ~is_text_mode_primitive:true
         ~code:{|
 let tctx = tctx |> TextBackend.deepen_indent i in
-BaseConstant(BCTextModeContext(tctx))
+make_text_mode_context (tctx, ctxsub)
 |}
-    ; inst "TextBreak"
+    ; inst "PrimitiveBreak"
         ~name:"break"
         ~type_:Type.(tTCTX @-> tS)
         ~fields:[
         ]
         ~params:[
-          param "tctx" ~type_:"text_mode_context";
+          param "(tctx, _)" ~type_:"text_mode_context";
         ]
         ~is_text_mode_primitive:true
         ~code:{|
@@ -864,39 +901,43 @@ let i = TextBackend.get_indent tctx in
 let s = "\n" ^ (String.make i ' ') in
 make_string s
 |}
-    ; inst "TextGetInitialTextModeContext"
+    ; inst "PrimitiveGetInitialTextModeContext"
         ~name:"get-initial-text-info"
-        ~type_:Type.(tU @-> tTCTX)
+        ~type_:Type.(tICMD tMT @-> (tS @-> tOPT tS @-> tOPT tS @-> tS) @-> tTCTX)
         ~fields:[
         ]
         ~params:[
-          param "value1";
+          param "mcmd" ~type_:"math_command_func";
+          param "mscriptsf" ~type_:"math_scripts_func";
         ]
         ~is_text_mode_primitive:true
         ~code:{|
-match value1 with
-| BaseConstant(BCUnit) ->
-    let tctx = TextBackend.get_initial_text_mode_context () in
-    BaseConstant(BCTextModeContext(tctx))
-
-| _ ->
-    report_bug_value "TextGetInitialTextModeContext" value1
+let tctx = TextBackend.get_initial_text_mode_context () in
+let ctcmd = DefaultCodeTextCommand in
+let tctxsub =
+  {
+    text_mode_math_command      = mcmd;
+    text_mode_code_text_command = ctcmd;
+    text_mode_math_scripts_func = mscriptsf;
+  }
+in
+make_text_mode_context (tctx, tctxsub)
 |}
-    ; inst "PrimitiveEmbeddedVertBreakable"
+    ; inst "PrimitiveEmbedBlockBreakable"
         ~name:"embed-block-breakable"
         ~type_:Type.(tCTX @-> tBB @-> tIB)
         ~fields:[
         ]
         ~params:[
           param "(ctx, _)" ~type_:"context";
-          param "vblst" ~type_:"vert";
+          param "contents" ~type_:"block_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let wid = ctx.HorzBox.paragraph_width in
-make_horz [HorzEmbeddedVertBreakable(wid, vblst)]
+let width = ctx.HorzBox.paragraph_width in
+make_inline_boxes [ HorzEmbeddedVertBreakable{ width; contents } ]
 |}
-    ; inst "BackendFont"
+    ; inst "PrimitiveFont"
         ~fields:[
         ]
         ~params:[
@@ -908,7 +949,7 @@ make_horz [HorzEmbeddedVertBreakable(wid, vblst)]
         ~code:{|
 make_font_value (abbrev, size_ratio, rising_ratio)
 |}
-    ; inst "BackendLineBreaking"
+    ; inst "PrimitiveLineBreak"
         ~name:"line-break"
         ~type_:Type.(tB @-> tB @-> tCTX @-> tIB @-> tBB)
         ~fields:[
@@ -917,37 +958,37 @@ make_font_value (abbrev, size_ratio, rising_ratio)
           param "is_breakable_top" ~type_:"bool";
           param "is_breakable_bottom" ~type_:"bool";
           param "(ctx,  _)" ~type_:"context";
-          param "hblst" ~type_:"horz";
+          param "ibs" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
 let open HorzBox in
-let br_top    = if is_breakable_top then Breakable else Unbreakable in
+let br_top = if is_breakable_top then Breakable else Unbreakable in
 let br_bottom = if is_breakable_bottom then Breakable else Unbreakable in
-let imvblst = LineBreak.main (br_top, ctx.paragraph_top) (br_bottom, ctx.paragraph_bottom) ctx hblst in
-make_vert imvblst
+let imbbs = LineBreak.main (br_top, ctx.paragraph_top) (br_bottom, ctx.paragraph_bottom) ctx ibs in
+make_block_boxes imbbs
 |}
-    ; inst "BackendPageBreaking"
+    ; inst "PrimitivePageBreak"
         ~name:"page-break"
-        ~type_:Type.(tPG @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+        ~type_:Type.(tPROD [tLN; tLN] @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
         ~fields:[
         ]
         ~params:[
           param "pagesize" ~type_:"page_size";
           param "valuepagecontf";
           param "valuepagepartsf";
-          param "vblst" ~type_:"vert";
+          param "bbs" ~type_:"block_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
-let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), pagecontf, pagepartsf, vblst))
+let pagecontf = make_page_content_scheme_func (reducef ~msg:"page-break 1") valuepagecontf in
+let pagepartsf = make_page_parts_scheme_func (reducef ~msg:"page-break 2") valuepagepartsf in
+BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), pagecontf, pagepartsf, bbs))
 |}
-    ; inst "BackendPageBreakingTwoColumn"
+    ; inst "PrimitivePageBreakTwoColumn"
         ~name:"page-break-two-column"
-        ~type_:Type.(tPG @-> tLN @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+        ~type_:Type.(tPROD [tLN; tLN] @-> tLN @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
         ~fields:[
         ]
         ~params:[
@@ -956,40 +997,41 @@ BaseConstant(BCDocument(pagesize, SingleColumn, (fun () -> []), (fun () -> []), 
           param "valuecolumnhookf";
           param "valuepagecontf";
           param "valuepagepartsf";
-          param "vblst" ~type_:"vert";
+          param "bbs" ~type_:"block_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let columnhookf = make_column_hook_func reducef valuecolumnhookf in
-let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
-let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun () -> []), pagecontf, pagepartsf, vblst))
+let columnhookf = make_column_hook_func (reducef ~msg:"page-break-two-column 1") valuecolumnhookf in
+let pagecontf = make_page_content_scheme_func (reducef ~msg:"page-break-two-column 2") valuepagecontf in
+let pagepartsf = make_page_parts_scheme_func (reducef ~msg:"page-break-two-column 3") valuepagepartsf in
+BaseConstant(BCDocument(pagesize, MultiColumn([origin_shift]), columnhookf, (fun () -> []), pagecontf, pagepartsf, bbs))
 |}
-    ; inst "BackendPageBreakingMultiColumn"
+    ; inst "PrimitivePageBreakMulticolumn"
         ~name:"page-break-multicolumn"
-        ~type_:Type.(tPG @-> tL tLN @-> (tU @-> tBB) @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
+        ~type_:Type.(tPROD [tLN; tLN] @-> tL tLN @-> (tU @-> tBB) @-> (tU @-> tBB) @-> tPAGECONTF @-> tPAGEPARTSF @-> tBB @-> tDOC)
         ~fields:[
         ]
         ~params:[
           param "pagesize" ~type_:"page_size";
-          param "origin_shifts" ~type_:"length_list";
+          param "value_origin_shifts";
           param "valuecolumnhookf";
           param "valuecolumnendhookf";
           param "valuepagecontf";
           param "valuepagepartsf";
-          param "vbs" ~type_:"vert";
+          param "bbs" ~type_:"block_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let columnhookf = make_column_hook_func reducef valuecolumnhookf in
-let columnendhookf = make_column_hook_func reducef valuecolumnendhookf in
-let pagecontf = make_page_content_scheme_func reducef valuepagecontf in
-let pagepartsf = make_page_parts_scheme_func reducef valuepagepartsf in
-BaseConstant(BCDocument(pagesize, MultiColumn(origin_shifts), columnhookf, columnendhookf, pagecontf, pagepartsf, vbs))
+let origin_shifts = get_list get_length value_origin_shifts in
+let columnhookf = make_column_hook_func (reducef ~msg:"page-break-multicolumn 1") valuecolumnhookf in
+let columnendhookf = make_column_hook_func (reducef ~msg:"page-break-multicolumn 2") valuecolumnendhookf in
+let pagecontf = make_page_content_scheme_func (reducef ~msg:"page-break-multicolumn 3") valuepagecontf in
+let pagepartsf = make_page_parts_scheme_func (reducef ~msg:"page-break-multicolumn 4") valuepagepartsf in
+BaseConstant(BCDocument(pagesize, MultiColumn(origin_shifts), columnhookf, columnendhookf, pagecontf, pagepartsf, bbs))
 |}
-    ; inst "BackendVertFrame"
+    ; inst "PrimitiveBlockFrameBreakable"
         ~name:"block-frame-breakable"
         ~type_:Type.(tCTX @-> tPADS @-> tDECOSET @-> (tCTX @-> tBB) @-> tBB)
         ~fields:[
@@ -997,20 +1039,20 @@ BaseConstant(BCDocument(pagesize, MultiColumn(origin_shifts), columnhookf, colum
         ~params:[
           param "(ctx, ctxsub)" ~type_:"context";
           param "pads" ~type_:"paddings";
-          param "(valuedecoS, valuedecoH, valuedecoM, valuedecoT)" ~type_:"decoset";
-          param "valuek";
+          param "(value_decoS, value_decoH, value_decoM, value_decoT)" ~type_:"decoset";
+          param "value_f";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let valuectxsub =
-  Context(HorzBox.({ ctx with
+let ictx =
+  (HorzBox.({ ctx with
     paragraph_width = HorzBox.(ctx.paragraph_width -% pads.paddingL -% pads.paddingR);
   }), ctxsub)
 in
-let vblst =
-  let valuev = reducef valuek [valuectxsub] in
-  get_vert valuev
+let bbs =
+  let value = reducef ~msg:"block-frame-breakable 0" value_f [ make_context ictx ] in
+  get_block_boxes value
 in
 let margins =
   HorzBox.{
@@ -1018,53 +1060,51 @@ let margins =
     margin_bottom = Some((Breakable, ctx.paragraph_bottom));
   }
 in
-make_vert (HorzBox.([
+make_block_boxes HorzBox.([
   VertFrame(margins, pads,
-    make_frame_deco reducef valuedecoS,
-    make_frame_deco reducef valuedecoH,
-    make_frame_deco reducef valuedecoM,
-    make_frame_deco reducef valuedecoT,
-    ctx.paragraph_width, vblst);
-]))
+    make_frame_deco (reducef ~msg:"block-frame-breakable 1") value_decoS,
+    make_frame_deco (reducef ~msg:"block-frame-breakable 2") value_decoH,
+    make_frame_deco (reducef ~msg:"block-frame-breakable 3") value_decoM,
+    make_frame_deco (reducef ~msg:"block-frame-breakable 4") value_decoT,
+    ctx.paragraph_width, bbs);
+])
 |}
-    ; inst "BackendAddFootnote"
+    ; inst "PrimitiveAddFootnote"
         ~name:"add-footnote"
         ~type_:Type.(tBB @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "vblst" ~type_:"vert";
+          param "bbs" ~type_:"block_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let imvblst = PageBreak.solidify vblst in
-make_horz (HorzBox.([HorzPure(PHGFootnote(imvblst))]))
+let imbbs = PageBreak.solidify bbs in
+make_inline_boxes HorzBox.([ HorzPure(PHGFootnote(imbbs)) ])
 |}
-    ; inst "BackendEmbeddedVertTop"
+    ; inst "PrimitiveEmbeddBlockTop"
         ~name:"embed-block-top"
         ~type_:Type.(tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)
         ~fields:[
         ]
         ~params:[
           param "(ctx, ctxsub)" ~type_:"context";
-          param "wid" ~type_:"length";
-          param "valuek";
+          param "width" ~type_:"length";
+          param "value_f";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let valuectxsub =
-  Context(HorzBox.({ ctx with paragraph_width = wid; }), ctxsub)
+let ictx = (HorzBox.({ ctx with paragraph_width = width }), ctxsub) in
+let bbs =
+  let value = reducef ~msg:"embed-block-top" value_f [ make_context ictx ] in
+  get_block_boxes value
 in
-let vblst =
-  let valuev = reducef valuek [valuectxsub] in
-  get_vert valuev
-in
-let imvblst = PageBreak.solidify vblst in
-let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+let contents = PageBreak.solidify bbs in
+let (height, depth) = PageBreak.adjust_to_first_line contents in
+make_inline_boxes HorzBox.([ HorzPure(PHGEmbeddedVert{ width; height; depth; contents }) ])
 |}
-    ; inst "BackendVertSkip"
+    ; inst "PrimitiveBlockSkip"
         ~name:"block-skip"
         ~type_:Type.(tLN @-> tBB)
         ~fields:[
@@ -1074,84 +1114,79 @@ make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_vert (HorzBox.([VertFixedBreakable(len)]))
+make_block_boxes HorzBox.([VertFixedBreakable(len)])
 |}
-    ; inst "BackendEmbeddedVertBottom"
+    ; inst "PrimitiveEmbedBlockBottom"
         ~name:"embed-block-bottom"
         ~type_:Type.(tCTX @-> tLN @-> (tCTX @-> tBB) @-> tIB)
         ~fields:[
         ]
         ~params:[
           param "(ctx, ctxsub)" ~type_:"context";
-          param "wid" ~type_:"length";
-          param "valuek";
+          param "width" ~type_:"length";
+          param "value_f";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let valuectxsub =
-  Context(HorzBox.({ ctx with paragraph_width = wid; }), ctxsub)
+let ictx = (HorzBox.({ ctx with paragraph_width = width }), ctxsub) in
+let bbs =
+  let value = reducef ~msg:"embed-block-bottom" value_f [ make_context ictx ] in
+  get_block_boxes value
 in
-let vblst =
-  let valuev = reducef valuek [valuectxsub] in
-    get_vert valuev
-in
-let imvblst = PageBreak.solidify vblst in
-let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
-make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+let contents = PageBreak.solidify bbs in
+let (height, depth) = PageBreak.adjust_to_last_line contents in
+make_inline_boxes HorzBox.([ HorzPure(PHGEmbeddedVert{ width; height; depth; contents }) ])
 |}
-    ; inst "BackendLineStackTop"
+    ; inst "PrimitiveLineStackTop"
         ~name:"line-stack-top"
         ~type_:Type.((tL tIB) @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "valuehblstlst";
+          param "value_ibss";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let hblstlst = get_list get_horz valuehblstlst in
-let (wid, vblst) = make_line_stack hblstlst in
-let imvblst = PageBreak.solidify vblst in
-let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
-make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+let ibss = get_list get_inline_boxes value_ibss in
+let (width, bbs) = make_line_stack ibss in
+let contents = PageBreak.solidify bbs in
+let (height, depth) = PageBreak.adjust_to_first_line contents in
+make_inline_boxes HorzBox.([ HorzPure(PHGEmbeddedVert{ width; height; depth; contents }) ])
 |}
-    ; inst "BackendLineStackBottom"
+    ; inst "PrimitiveLineStackBottom"
         ~name:"line-stack-bottom"
         ~type_:Type.((tL tIB) @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "valuehblstlst";
+          param "value_ibss";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let hblstlst = get_list get_horz valuehblstlst in
-let (wid, vblst) = make_line_stack hblstlst in
-let imvblst = PageBreak.solidify vblst in
-let (hgt, dpt) = PageBreak.adjust_to_last_line imvblst in
-make_horz (HorzBox.([HorzPure(PHGEmbeddedVert(wid, hgt, dpt, imvblst))]))
+let ibss = get_list get_inline_boxes value_ibss in
+let (width, bbs) = make_line_stack ibss in
+let contents = PageBreak.solidify bbs in
+let (height, depth) = PageBreak.adjust_to_last_line contents in
+make_inline_boxes HorzBox.([ HorzPure(PHGEmbeddedVert{ width; height; depth; contents }) ])
 |}
     ; inst "PrimitiveGetInitialContext"
         ~name:"get-initial-context"
-        ~type_:Type.(tLN @-> tICMD tMATH @-> tCTX)
+        ~type_:Type.(tLN @-> tICMD tMT @-> tCTX)
         ~fields:[
         ]
         ~params:[
           param "txtwid" ~type_:"length";
-          param "valuecmd";
+          param "mcmd" ~type_:"math_command_func";
         ]
         ~is_pdf_mode_primitive:true
-        ~needs_reducef:true
         ~code:{|
 let ctx = Primitives.get_pdf_mode_initial_context txtwid in
-let mcmd = get_math_command_func reducef valuecmd in
 let ctcmd = DefaultCodeTextCommand in
 let ctxsub =
   {
-    math_command = mcmd;
+    math_command      = mcmd;
     code_text_command = ctcmd;
-    dummy = ();
   }
 in
 Context(ctx, ctxsub)
@@ -1267,6 +1302,20 @@ match ctx.script_space_map |> CharBasis.ScriptSpaceMap.find_opt (script1, script
       make_float r2;
     ]))
 |}
+    ; inst "PrimitiveGetMathAxisHeightRatio"
+        ~name:"get-math-axis-height-ratio"
+        ~type_:Type.(tCTX @-> tFL)
+        ~fields:[
+        ]
+        ~params:[
+          param "ictx" ~type_:"context";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let mfabbrev = Context.math_font_abbrev ictx in
+let mc = FontInfo.get_math_constants mfabbrev in
+make_float (mc.FontFormat.axis_height)
+|}
     ; inst "PrimitiveSetParagraphMargin"
         ~name:"set-paragraph-margin"
         ~type_:Type.(tLN @-> tLN @-> tCTX @-> tCTX)
@@ -1366,7 +1415,7 @@ make_font_value fontwr
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-Context(HorzBox.({ ctx with math_font = mfabbrev; }), ctxsub)
+Context(HorzBox.({ ctx with math_font_abbrev = mfabbrev; }), ctxsub)
 |}
     ; inst "PrimitiveSetDominantWideScript"
         ~name:"set-dominant-wide-script"
@@ -1418,7 +1467,7 @@ Context(HorzBox.({ ctx with dominant_narrow_script = script; }), ctxsub)
         ~code:{|
 make_script_value ctx.HorzBox.dominant_narrow_script
 |}
-    ; inst "PrimitiveSetLangSys"
+    ; inst "PrimitiveSetLanguage"
         ~name:"set-language"
         ~type_:Type.(tSCR @-> tLANG @-> tCTX @-> tCTX)
         ~fields:[
@@ -1434,7 +1483,7 @@ Context(HorzBox.({ ctx with
   langsys_scheme = ctx.langsys_scheme |> CharBasis.ScriptSchemeMap.add script langsys;
 }), ctxsub)
 |}
-    ; inst "PrimitiveGetLangSys"
+    ; inst "PrimitiveGetLanguage"
         ~name:"get-language"
         ~type_:Type.(tSCR @-> tCTX @-> tLANG)
         ~fields:[
@@ -1512,18 +1561,18 @@ make_length (ctx.HorzBox.paragraph_width)
         ~code:{|
 Context(HorzBox.({ ctx with manual_rising = rising; }), ctxsub)
 |}
-    ; inst "PrimitiveRaise"
+    ; inst "PrimitiveRaiseInline"
         ~name:"raise-inline"
         ~type_:Type.(tLN @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
           param "rising" ~type_:"length";
-          param "hblst" ~type_:"horz";
+          param "contents" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz (HorzBox.([HorzPure(PHGRising(rising, hblst))]))
+make_inline_boxes HorzBox.([ HorzPure(PHGRising{ rising; contents }) ])
 |}
     ; inst "PrimitiveSetHyphenPenalty"
         ~name:"set-hyphen-penalty"
@@ -1538,7 +1587,7 @@ make_horz (HorzBox.([HorzPure(PHGRising(rising, hblst))]))
         ~code:{|
 Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), ctxsub)
 |}
-    ; inst "PrimitiveEmbed"
+    ; inst "PrimitiveEmbedString"
         ~name:"embed-string"
         ~type_:Type.(tS @-> tIT)
         ~fields:[
@@ -1549,244 +1598,231 @@ Context(HorzBox.({ ctx with hyphen_badness = pnlty; }), ctxsub)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code_interp:{|
-InputHorzClosure([ImInputHorzText(str)], env)
+InlineTextValue([ InlineTextValueString(str) ])
 |}
         ~code:{|
-CompiledInputHorzClosure([CompiledImInputHorzText(str)], env)
+let _ = str in
+failwith "TODO: vm, embed-string"
+(*
+CompiledInlineTextClosure([CompiledImInlineTextText(str)], env)
+*)
 |}
-    ; inst "PrimitiveExtract"
+    ; inst "PrimitiveExtractString"
         ~name:"extract-string"
         ~type_:Type.(tIB @-> tS)
         ~fields:[
         ]
         ~params:[
-          param "hblst" ~type_:"horz";
+          param "ibs" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_string (HorzBox.extract_string hblst)
+ibs
+|> HorzBox.extract_string
+|> make_string
 |}
-    ; inst "PrimitiveGetAxisHeight"
-        ~name:"get-axis-height"
-        ~type_:Type.(tCTX @-> tLN)
-        ~fields:[
-        ]
-        ~params:[
-          param "(ctx, _)" ~type_:"context";
-        ]
-        ~is_pdf_mode_primitive:true
-        ~code:{|
-let fontsize = ctx.HorzBox.font_size in
-let mfabbrev = ctx.HorzBox.math_font in
-let hgt = FontInfo.get_axis_height mfabbrev fontsize in
-  make_length (hgt)
-|}
-    ; inst "BackendFixedEmpty"
+    ; inst "PrimitiveInlineSkip"
         ~name:"inline-skip"
         ~type_:Type.(tLN @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "wid" ~type_:"length";
+          param "width" ~type_:"length";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz [HorzBox.HorzPure(HorzBox.PHSFixedEmpty(wid))]
+make_inline_boxes [ HorzBox.HorzPure(HorzBox.PHSFixedEmpty{ width }) ]
 |}
-    ; inst "BackendOuterEmpty"
+    ; inst "PrimitiveInlineGlue"
         ~name:"inline-glue"
         ~type_:Type.(tLN @-> tLN @-> tLN @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "widnat" ~type_:"length";
-          param "widshrink" ~type_:"length";
-          param "widstretch" ~type_:"length";
+          param "natural" ~type_:"length";
+          param "shrinkable" ~type_:"length";
+          param "stretchable" ~type_:"length";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz [HorzBox.HorzPure(HorzBox.PHSOuterEmpty(widnat, widshrink, widstretch))]
+make_inline_boxes HorzBox.([ HorzPure(PHSOuterEmpty{ natural; shrinkable; stretchable }) ])
 |}
-    ; inst "BackendOuterFrame"
+    ; inst "PrimitiveInlineFrameOuter"
         ~name:"inline-frame-outer"
         ~type_:Type.(tPADS @-> tDECO @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "pads" ~type_:"paddings";
-          param "valuedeco";
-          param "hblst" ~type_:"horz";
+          param "paddings" ~type_:"paddings";
+          param "value_deco";
+          param "contents" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-make_horz ([HorzBox.HorzPure(HorzBox.PHGOuterFrame(
-  pads,
-  make_frame_deco reducef valuedeco,
-  hblst))])
+let decoration = make_frame_deco (reducef ~msg:"inline-frame-outer") value_deco in
+make_inline_boxes HorzBox.([ HorzPure(PHGOuterFrame{ paddings; decoration; contents }) ])
 |}
-    ; inst "BackendInnerFrame"
+    ; inst "PrimitiveInlineFrameInner"
         ~name:"inline-frame-inner"
         ~type_:Type.(tPADS @-> tDECO @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "pads" ~type_:"paddings";
-          param "valuedeco";
-          param "hblst" ~type_:"horz";
+          param "paddings" ~type_:"paddings";
+          param "value_deco";
+          param "contents" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-make_horz ([HorzBox.HorzPure(HorzBox.PHGInnerFrame(
-  pads,
-  make_frame_deco reducef valuedeco,
-  hblst))])
+let decoration = make_frame_deco (reducef ~msg:"inline-frame-inner") value_deco in
+make_inline_boxes HorzBox.([ HorzPure(PHGInnerFrame{ paddings; decoration; contents }) ])
 |}
-    ; inst "BackendFixedFrame"
+    ; inst "PrimitiveInlineFrameFixed"
         ~name:"inline-frame-fixed"
         ~type_:Type.(tLN @-> tPADS @-> tDECO @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "wid" ~type_:"length";
-          param "pads" ~type_:"paddings";
-          param "valuedeco";
-          param "hblst" ~type_:"horz";
+          param "required_width" ~type_:"length";
+          param "paddings" ~type_:"paddings";
+          param "value_deco";
+          param "contents" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-make_horz ([HorzBox.HorzPure(HorzBox.PHGFixedFrame(
-  pads, wid,
-  make_frame_deco reducef valuedeco,
-  hblst))])
+let decoration = make_frame_deco (reducef ~msg:"inline-frame-fixed") value_deco in
+make_inline_boxes HorzBox.([ HorzPure(PHGFixedFrame{ required_width; paddings; decoration; contents }) ])
 |}
-    ; inst "BackendOuterFrameBreakable"
+    ; inst "PrimitiveInlineFrameBreakable"
         ~name:"inline-frame-breakable"
         ~type_:Type.(tPADS @-> tDECOSET @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "pads" ~type_:"paddings";
-          param "(valuedecoS, valuedecoH, valuedecoM, valuedecoT)" ~type_:"decoset";
-          param "hblst" ~type_:"horz";
+          param "paddings" ~type_:"paddings";
+          param "(value_decoS, value_decoH, value_decoM, value_decoT)" ~type_:"decoset";
+          param "contents" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-make_horz ([HorzBox.HorzFrameBreakable(
-  pads, Length.zero, Length.zero,
-  make_frame_deco reducef valuedecoS,
-  make_frame_deco reducef valuedecoH,
-  make_frame_deco reducef valuedecoM,
-  make_frame_deco reducef valuedecoT,
-  hblst
-)])
+make_inline_boxes HorzBox.([ HorzFrameBreakable{
+  paddings;
+  decoration_standalone = make_frame_deco (reducef ~msg:"inline-frame-breakable 1") value_decoS;
+  decoration_head       = make_frame_deco (reducef ~msg:"inline-frame-breakable 2") value_decoH;
+  decoration_middle     = make_frame_deco (reducef ~msg:"inline-frame-breakable 3") value_decoM;
+  decoration_tail       = make_frame_deco (reducef ~msg:"inline-frame-breakable 4") value_decoT;
+  contents;
+}])
 |}
-    ; inst "BackendInlineGraphics"
+    ; inst "PrimitiveInlineGraphics"
         ~name:"inline-graphics"
         ~type_:Type.(tLN @-> tLN @-> tLN @-> tIGR @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "wid" ~type_:"length";
-          param "hgt" ~type_:"length";
-          param "dpt" ~type_:"length";
-          param "valueg";
+          param "width" ~type_:"length";
+          param "height" ~type_:"length";
+          param "nonneg_depth" ~type_:"length";
+          param "value_g";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let graphics = make_inline_graphics reducef valueg in
-make_horz (HorzBox.([HorzPure(PHGFixedGraphics(wid, hgt, Length.negate dpt, graphics))]))
+let depth = Length.negate nonneg_depth in
+let graphics = make_inline_graphics (reducef ~msg:"inline-graphics") value_g in
+make_inline_boxes HorzBox.([ HorzPure(PHGFixedGraphics{ width; height; depth; graphics }) ])
 |}
-    ; inst "BackendInlineGraphicsOuter"
+    ; inst "PrimitiveInlineGraphicsOuter"
         ~name:"inline-graphics-outer"
         ~type_:Type.(tLN @-> tLN @-> tIGRO @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "hgt" ~type_:"length";
-          param "dpt" ~type_:"length";
-          param "valueg";
+          param "height" ~type_:"length";
+          param "nonneg_depth" ~type_:"length";
+          param "value_g";
         ]
         ~is_pdf_mode_primitive:true
         ~needs_reducef:true
         ~code:{|
-let graphics = make_inline_graphics_outer reducef valueg in
-make_horz (HorzBox.([HorzPure(PHGOuterFilGraphics(hgt, Length.negate dpt, graphics))]))
+let depth = Length.negate nonneg_depth in
+let graphics = make_inline_graphics_outer (reducef ~msg:"inline-graphics-outer") value_g in
+make_inline_boxes HorzBox.([ HorzPure(PHGOuterFilGraphics{ height; depth; graphics }) ])
 |}
-    ; inst "BackendScriptGuard"
+    ; inst "PrimitiveScriptGuard"
         ~name:"script-guard"
         ~type_:Type.(tSCR @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
           param "script" ~type_:"script";
-          param "hblst" ~type_:"horz";
+          param "contents" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz (HorzBox.([HorzScriptGuard(script, script, hblst)]))
+make_inline_boxes HorzBox.([ HorzScriptGuard{ left = script; right = script; contents } ])
 |}
-    ; inst "BackendScriptGuardBoth"
+    ; inst "PrimitiveScriptGuardBoth"
         ~name:"script-guard-both"
         ~type_:Type.(tSCR @-> tSCR @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "scriptL" ~type_:"script";
-          param "scriptR" ~type_:"script";
-          param "hblst" ~type_:"horz";
+          param "left" ~type_:"script";
+          param "right" ~type_:"script";
+          param "contents" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz (HorzBox.([HorzScriptGuard(scriptL, scriptR, hblst)]))
+make_inline_boxes HorzBox.([ HorzScriptGuard{ left; right; contents } ])
 |}
-    ; inst "BackendGetLeftmostScript"
+    ; inst "PrimitiveGetLeftmostScript"
         ~name:"get-leftmost-script"
         ~type_:Type.(tIB @-> tOPT tSCR)
         ~fields:[
         ]
         ~params:[
-          param "hblst" ~type_:"horz";
+          param "ibs" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let scriptopt = LineBreak.get_leftmost_script hblst in
-make_option make_script_value scriptopt
+let script_opt = LineBreak.get_leftmost_script ibs in
+make_option make_script_value script_opt
 |}
-    ; inst "BackendGetRightmostScript"
+    ; inst "PrimitiveGetRightmostScript"
         ~name:"get-rightmost-script"
         ~type_:Type.(tIB @-> tOPT tSCR)
         ~fields:[
         ]
         ~params:[
-          param "hblst" ~type_:"horz";
+          param "ibs" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let scriptopt = LineBreak.get_rightmost_script hblst in
-make_option make_script_value scriptopt
+let script_opt = LineBreak.get_rightmost_script ibs in
+make_option make_script_value script_opt
 |}
-    ; inst "BackendDiscretionary"
+    ; inst "PrimitiveDiscretionary"
         ~name:"discretionary"
         ~type_:Type.(tI @-> tIB @-> tIB @-> tIB @-> tIB)
         ~fields:[
         ]
         ~params:[
-          param "pb" ~type_:"int";
-          param "hblst0" ~type_:"horz";
-          param "hblst1" ~type_:"horz";
-          param "hblst2" ~type_:"horz";
+          param "penalty" ~type_:"int";
+          param "no_break" ~type_:"inline_boxes";
+          param "pre" ~type_:"inline_boxes";
+          param "post" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_horz (HorzBox.([HorzDiscretionary(pb, hblst0, hblst1, hblst2)]))
+make_inline_boxes HorzBox.([ HorzDiscretionary{ penalty; no_break; pre; post } ])
 |}
-    ; inst "BackendRegisterCrossReference"
+    ; inst "PrimitiveRegisterCrossReference"
         ~name:"register-cross-reference"
         ~type_:Type.(tS @-> tS @-> tU)
         ~fields:[
@@ -1801,7 +1837,7 @@ make_horz (HorzBox.([HorzDiscretionary(pb, hblst0, hblst1, hblst2)]))
 CrossRef.register k v;
 const_unit
 |}
-    ; inst "BackendGetCrossReference"
+    ; inst "PrimitiveGetCrossReference"
         ~name:"get-cross-reference"
         ~type_:Type.(tS @-> (tOPT tS))
         ~fields:[
@@ -1822,15 +1858,15 @@ match CrossRef.get k with
         ~fields:[
         ]
         ~params:[
-          param "hblst" ~type_:"horz";
+          param "ibs" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let (wid, hgt, dpt) = LineBreak.get_natural_metrics hblst in
+let (width, height, depth) = LineBreak.get_natural_metrics ibs in
 Tuple([
-  make_length (wid);
-  make_length (hgt);
-  make_length (Length.negate dpt);
+  make_length width;
+  make_length height;
+  make_length (Length.negate depth);
 ])
 |}
     ; inst "PrimitiveGetNaturalLength"
@@ -1839,12 +1875,12 @@ Tuple([
         ~fields:[
         ]
         ~params:[
-          param "vblst" ~type_:"vert";
+          param "bbs" ~type_:"block_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let imvblst = PageBreak.solidify vblst in
-let (hgt, dpt) = PageBreak.adjust_to_first_line imvblst in
+let imbbs = PageBreak.solidify bbs in
+let (hgt, dpt) = PageBreak.adjust_to_first_line imbbs in
 make_length (hgt +% (Length.negate dpt))
 |}
     ; inst "PrimitiveDisplayMessage"
@@ -1875,7 +1911,7 @@ match valuetl with
 | List(vlst) -> List(valuehd :: vlst)
 | _          -> report_bug_value "PrimitiveListCons" valuetl
 |}
-    ; inst "PrimitiveSame"
+    ; inst "PrimitiveStringSame"
         ~name:"string-same"
         ~type_:Type.(tS @-> tS @-> tB)
         ~fields:[
@@ -1904,7 +1940,7 @@ make_bool (String.equal str1 str2)
         ~code:{|
 let resstr =
   try BatUTF8.sub str pos wid with
-  | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub"
+  | Invalid_argument(_) -> report_dynamic_error "illegal index for string-sub"
 in
 make_string resstr
 |}
@@ -1923,7 +1959,7 @@ make_string resstr
         ~code:{|
 let resstr =
   try String.sub str pos wid with
-  | Invalid_argument(s) -> report_dynamic_error "illegal index for string-sub-bytes"
+  | Invalid_argument(_) -> report_dynamic_error "illegal index for string-sub-bytes"
 in
 make_string resstr
 |}
@@ -1985,7 +2021,11 @@ else
         ~is_text_mode_primitive:true
         ~code:{|
 let ilst = get_list get_int valueilst in
-let s = (List.map Uchar.of_int ilst) |> InternalText.of_uchar_list |> InternalText.to_utf8 in
+let s =
+  (List.map Uchar.of_int ilst)
+    |> InternalText.of_uchar_list
+    |> InternalText.to_utf8
+in
 make_string s
 |}
     ; inst "PrimitiveStringExplode"
@@ -2001,13 +2041,59 @@ make_string s
         ~code:{|
 let ilst =
   str
-  |> InternalText.of_utf8
-  |> InternalText.to_uchar_list
-  |> List.map Uchar.to_int
+    |> InternalText.of_utf8
+    |> InternalText.to_uchar_list
+    |> List.map Uchar.to_int
 in
 make_list make_int ilst
 |}
-    ; inst "PrimitiveRegExpOfString"
+    ; inst "PrimitiveNormlizeStringToNfc"
+        ~name:"normalize-string-to-nfc"
+        ~type_:Type.(tS @-> tS)
+        ~fields:[
+        ]
+        ~params:[
+          param "str" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+str
+  |> NormalizeString.of_utf8_nfc
+  |> NormalizeString.to_utf8
+  |> make_string
+|}
+    ; inst "PrimitiveNormlizeStringToNfd"
+        ~name:"normalize-string-to-nfd"
+        ~type_:Type.(tS @-> tS)
+        ~fields:[
+        ]
+        ~params:[
+          param "str" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+str
+  |> NormalizeString.of_utf8_nfd
+  |> NormalizeString.to_utf8
+  |> make_string
+|}
+    ; inst "PrimitiveSplitGraphemeCluster"
+        ~name:"split-grapheme-cluster"
+        ~type_:Type.(tS @-> (tL tS))
+        ~fields:[
+        ]
+        ~params:[
+          param "str" ~type_:"string";
+        ]
+        ~is_pdf_mode_primitive:true
+        ~is_text_mode_primitive:true
+        ~code:{|
+let slst = GraphemeCluster.split_utf8 str in
+make_list make_string slst
+|}
+    ; inst "PrimitiveRegexpOfString"
         ~name:"regexp-of-string"
         ~type_:Type.(tS @-> tRE)
         ~fields:[
@@ -2053,7 +2139,7 @@ let slst = String.split_on_char '\n' s in
 let pairlst = slst |> List.map chop_space_indent in
 pairlst |> make_list (fun (i, s) -> Tuple([make_int i; make_string s]))
 |}
-    ; inst "PrimitiveSplitOnRegExp"
+    ; inst "PrimitiveSplitOnRegexp"
         ~name:"split-on-regexp"
         ~type_:Type.(tRE @-> tS @-> (tL (tPROD [tI; tS])))
         ~fields:[
@@ -2128,15 +2214,15 @@ make_int (int_of_float fc1)
         ]
         ~params:[
           param "pt" ~type_:"point";
-          param "hblst" ~type_:"horz";
+          param "ibs" ~type_:"inline_boxes";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let (imhblst, _, _) = LineBreak.natural hblst in
-let grelem = GraphicD.make_text pt imhblst in
-make_graphics grelem
+let (imibs, _, _) = LineBreak.natural ibs in
+let gr = GraphicD.make_text pt imibs in
+make_graphics gr
 |}
-    ; inst "PrimitiveDrawStroke"
+    ; inst "PrimitiveStroke"
         ~name:"stroke"
         ~type_:Type.(tLN @-> tCLR @-> tPATH @-> tGR)
         ~fields:[
@@ -2151,7 +2237,7 @@ make_graphics grelem
 let grelem = GraphicD.make_stroke wid color pathlst in
 make_graphics grelem
 |}
-    ; inst "PrimitiveDrawFill"
+    ; inst "PrimitiveFill"
         ~name:"fill"
         ~type_:Type.(tCLR @-> tPATH @-> tGR)
         ~fields:[
@@ -2165,7 +2251,7 @@ make_graphics grelem
 let grelem = GraphicD.make_fill color pathlst in
 make_graphics grelem
 |}
-    ; inst "PrimitiveDrawDashedStroke"
+    ; inst "PrimitiveDashedStroke"
         ~name:"dashed-stroke"
         ~type_:Type.(tLN @-> tDASH @-> tCLR @-> tPATH @-> tGR)
         ~fields:[
@@ -2192,11 +2278,11 @@ make_graphics grelem
           param "b" ~type_:"float";
           param "c" ~type_:"float";
           param "d" ~type_:"float";
-          param "grelem" ~type_:"graphics_element";
+          param "gr" ~type_:"graphics";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_graphics (GraphicD.make_linear_trans (a, b, c, d) grelem)
+make_graphics (GraphicD.make_linear_trans (a, b, c, d) gr)
 |}
     ; inst "PrimitiveShiftGraphics"
         ~name:"shift-graphics"
@@ -2205,33 +2291,35 @@ make_graphics (GraphicD.make_linear_trans (a, b, c, d) grelem)
         ]
         ~params:[
           param "vec" ~type_:"point";
-          param "grelem" ~type_:"graphics_element";
+          param "gr" ~type_:"graphics";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-make_graphics (GraphicD.shift_element vec grelem)
+make_graphics (GraphicD.shift vec gr)
 |}
-    ; inst "PrimtiveGetGraphicsBBox"
+    ; inst "PrimitiveGetGraphicsBbox"
         ~name:"get-graphics-bbox"
-        ~type_:Type.(tGR @-> tPROD [tPT; tPT])
+        ~type_:Type.(tGR @-> tOPT (tPROD [tPT; tPT]))
         ~fields:[
         ]
         ~params:[
-          param "grelem" ~type_:"graphics_element";
+          param "gr" ~type_:"graphics";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let (ptmin, ptmax) =
-  GraphicD.get_element_bbox (fun (x, y) imhblst ->
-    let (wid, hgt, dpt) = HorzBox.get_metrics_of_intermediate_horz_box_list imhblst in
+let bbox_opt =
+  GraphicD.get_bbox (fun (x, y) imibs ->
+    let (wid, hgt, dpt) = HorzBox.get_metrics_of_intermediate_horz_box_list imibs in
       ((x, y +% dpt), (x +% wid, y +% hgt))
-  ) grelem
+  ) gr
 in
-let value1 = make_point_value ptmin in
-let value2 = make_point_value ptmax in
-Tuple([value1; value2])
+bbox_opt |> make_option (fun (ptmin, ptmax) ->
+  let value1 = make_point_value ptmin in
+  let value2 = make_point_value ptmax in
+  Tuple([value1; value2])
+)
 |}
-    ; inst "Times"
+    ; inst "PrimitiveTimes"
         ~name:"*"
         ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
@@ -2245,7 +2333,7 @@ Tuple([value1; value2])
         ~code:{|
 make_int (numl * numr)
 |}
-    ; inst "Divides"
+    ; inst "PrimitiveDivides"
         ~name:"/"
         ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
@@ -2260,7 +2348,7 @@ make_int (numl * numr)
 try make_int (numl / numr) with
 | Division_by_zero -> report_dynamic_error "division by zero"
 |}
-    ; inst "Mod"
+    ; inst "PrimitiveMod"
         ~name:"mod"
         ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
@@ -2275,7 +2363,7 @@ try make_int (numl / numr) with
 try make_int (numl mod numr) with
 | Division_by_zero -> report_dynamic_error "division by zero"
 |}
-    ; inst "Plus"
+    ; inst "PrimitivePlus"
         ~name:"+"
         ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
@@ -2289,7 +2377,7 @@ try make_int (numl mod numr) with
         ~code:{|
 make_int (numl + numr)
 |}
-    ; inst "Minus"
+    ; inst "PrimitiveMinus"
         ~name:"-"
         ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
@@ -2303,7 +2391,7 @@ make_int (numl + numr)
         ~code:{|
 make_int (numl - numr)
 |}
-    ; inst "EqualTo"
+    ; inst "PrimitiveEqualTo"
         ~name:"=="
         ~type_:Type.(tI @-> tI @-> tB)
         ~fields:[
@@ -2317,7 +2405,7 @@ make_int (numl - numr)
         ~code:{|
 make_bool (numl = numr)
 |}
-    ; inst "GreaterThan"
+    ; inst "PrimitiveGreaterThan"
         ~name:">"
         ~type_:Type.(tI @-> tI @-> tB)
         ~fields:[
@@ -2331,7 +2419,7 @@ make_bool (numl = numr)
         ~code:{|
 make_bool (numl > numr)
 |}
-    ; inst "LessThan"
+    ; inst "PrimitiveLessThan"
         ~name:"<"
         ~type_:Type.(tI @-> tI @-> tB)
         ~fields:[
@@ -2345,7 +2433,7 @@ make_bool (numl > numr)
         ~code:{|
 make_bool (numl < numr)
 |}
-    ; inst "LogicalAnd"
+    ; inst "PrimitiveLogicalAnd"
         ~name:"&&"
         ~type_:Type.(tB @-> tB @-> tB)
         ~fields:[
@@ -2359,7 +2447,7 @@ make_bool (numl < numr)
         ~code:{|
 make_bool (binl && binr)
 |}
-    ; inst "LogicalOr"
+    ; inst "PrimitiveLogicalOr"
         ~name:"||"
         ~type_:Type.(tB @-> tB @-> tB)
         ~fields:[
@@ -2373,7 +2461,7 @@ make_bool (binl && binr)
         ~code:{|
 make_bool (binl || binr)
 |}
-    ; inst "LogicalNot"
+    ; inst "PrimitiveLogicalNot"
         ~name:"not"
         ~type_:Type.(tB @-> tB)
         ~fields:[
@@ -2386,7 +2474,7 @@ make_bool (binl || binr)
         ~code:{|
 make_bool (not binl)
 |}
-    ; inst "BitShiftRight"
+    ; inst "PrimitiveBitShiftRight"
         ~name:">>"
         ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
@@ -2400,11 +2488,11 @@ make_bool (not binl)
         ~code:{|
 let bits =
   try numl lsr numr with
-  | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '>>'"
+  | Invalid_argument(_) -> report_dynamic_error "Bit offset out of bounds for '>>'"
 in
 make_int bits
 |}
-    ; inst "BitShiftLeft"
+    ; inst "PrimitiveBitShiftLeft"
         ~name:"<<"
         ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
@@ -2418,11 +2506,11 @@ make_int bits
         ~code:{|
 let bits =
   try numl lsl numr with
-  | Invalid_argument(s) -> report_dynamic_error "Bit offset out of bounds for '<<'"
+  | Invalid_argument(_) -> report_dynamic_error "Bit offset out of bounds for '<<'"
 in
 make_int bits
 |}
-    ; inst "BitXor"
+    ; inst "PrimitiveBxor"
         ~name:"bxor"
         ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
@@ -2436,7 +2524,7 @@ make_int bits
         ~code:{|
 make_int (numl lxor numr)
 |}
-    ; inst "BitAnd"
+    ; inst "PrimitiveBand"
         ~name:"band"
         ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
@@ -2450,7 +2538,7 @@ make_int (numl lxor numr)
         ~code:{|
 make_int (numl land numr)
 |}
-    ; inst "BitOr"
+    ; inst "PrimitiveBor"
         ~name:"bor"
         ~type_:Type.(tI @-> tI @-> tI)
         ~fields:[
@@ -2464,7 +2552,7 @@ make_int (numl land numr)
         ~code:{|
 make_int (numl lor numr)
 |}
-    ; inst "BitNot"
+    ; inst "PrimitiveBnot"
         ~name:"bnot"
         ~type_:Type.(tI @-> tI)
         ~fields:[
@@ -2477,7 +2565,7 @@ make_int (numl lor numr)
         ~code:{|
 make_int (lnot num)
 |}
-    ; inst "FloatPlus"
+    ; inst "PrimitiveFloatPlus"
         ~name:"+."
         ~type_:Type.(tFL @-> tFL @-> tFL)
         ~fields:[
@@ -2491,7 +2579,7 @@ make_int (lnot num)
         ~code:{|
 make_float (flt1 +. flt2)
 |}
-    ; inst "FloatMinus"
+    ; inst "PrimitiveFloatMinus"
         ~name:"-."
         ~type_:Type.(tFL @-> tFL @-> tFL)
         ~fields:[
@@ -2505,7 +2593,7 @@ make_float (flt1 +. flt2)
         ~code:{|
 make_float (flt1 -. flt2)
 |}
-    ; inst "FloatTimes"
+    ; inst "PrimitiveFloatTimes"
         ~name:"*."
         ~type_:Type.(tFL @-> tFL @-> tFL)
         ~fields:[
@@ -2519,7 +2607,7 @@ make_float (flt1 -. flt2)
         ~code:{|
 make_float (flt1 *. flt2)
 |}
-    ; inst "FloatDivides"
+    ; inst "PrimitiveFloatDivides"
         ~name:"/."
         ~type_:Type.(tFL @-> tFL @-> tFL)
         ~fields:[
@@ -2533,7 +2621,7 @@ make_float (flt1 *. flt2)
         ~code:{|
 make_float (flt1 /. flt2)
 |}
-    ; inst "FloatSine"
+    ; inst "PrimitiveSin"
         ~name:"sin"
         ~type_:Type.(tFL @-> tFL)
         ~fields:[
@@ -2546,7 +2634,7 @@ make_float (flt1 /. flt2)
         ~code:{|
 make_float (sin flt1)
 |}
-    ; inst "FloatArcSine"
+    ; inst "PrimitiveAsin"
         ~name:"asin"
         ~type_:Type.(tFL @-> tFL)
         ~fields:[
@@ -2559,7 +2647,7 @@ make_float (sin flt1)
         ~code:{|
 make_float (asin flt1)
 |}
-    ; inst "FloatCosine"
+    ; inst "PrimitiveCos"
         ~name:"cos"
         ~type_:Type.(tFL @-> tFL)
         ~fields:[
@@ -2572,7 +2660,7 @@ make_float (asin flt1)
         ~code:{|
 make_float (cos flt1)
 |}
-    ; inst "FloatArcCosine"
+    ; inst "PrimitiveAcos"
         ~name:"acos"
         ~type_:Type.(tFL @-> tFL)
         ~fields:[
@@ -2585,7 +2673,7 @@ make_float (cos flt1)
         ~code:{|
 make_float (acos flt1)
 |}
-    ; inst "FloatTangent"
+    ; inst "PrimitiveTan"
         ~name:"tan"
         ~type_:Type.(tFL @-> tFL)
         ~fields:[
@@ -2598,7 +2686,7 @@ make_float (acos flt1)
         ~code:{|
 make_float (tan flt1)
 |}
-    ; inst "FloatArcTangent"
+    ; inst "PrimitiveAtan"
         ~name:"atan"
         ~type_:Type.(tFL @-> tFL)
         ~fields:[
@@ -2611,7 +2699,7 @@ make_float (tan flt1)
         ~code:{|
 make_float (atan flt1)
 |}
-    ; inst "FloatArcTangent2"
+    ; inst "PrimitiveAtan2"
         ~name:"atan2"
         ~type_:Type.(tFL @-> tFL @-> tFL)
         ~fields:[
@@ -2625,7 +2713,7 @@ make_float (atan flt1)
         ~code:{|
 make_float (atan2 flt1 flt2)
 |}
-    ; inst "FloatLogarithm"
+    ; inst "PrimitiveLog"
         ~name:"log"
         ~type_:Type.(tFL @-> tFL)
         ~fields:[
@@ -2638,7 +2726,7 @@ make_float (atan2 flt1 flt2)
         ~code:{|
 make_float (log flt)
 |}
-    ; inst "FloatExponential"
+    ; inst "PrimitiveExp"
         ~name:"exp"
         ~type_:Type.(tFL @-> tFL)
         ~fields:[
@@ -2677,7 +2765,7 @@ make_float (ceil fc1)
         ~code:{|
 make_float (floor fc1)
 |}
-    ; inst "LengthPlus"
+    ; inst "PrimitiveLengthPlus"
         ~name:"+'"
         ~type_:Type.(tLN @-> tLN @-> tLN)
         ~fields:[
@@ -2689,9 +2777,9 @@ make_float (floor fc1)
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_length (HorzBox.(len1 +% len2))
+make_length (len1 +% len2)
 |}
-    ; inst "LengthMinus"
+    ; inst "PrimitiveLengthMinus"
         ~name:"-'"
         ~type_:Type.(tLN @-> tLN @-> tLN)
         ~fields:[
@@ -2703,9 +2791,9 @@ make_length (HorzBox.(len1 +% len2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_length (HorzBox.(len1 -% len2))
+make_length (len1 -% len2)
 |}
-    ; inst "LengthTimes"
+    ; inst "PrimitiveLengthTimes"
         ~name:"*'"
         ~type_:Type.(tLN @-> tFL @-> tLN)
         ~fields:[
@@ -2717,9 +2805,9 @@ make_length (HorzBox.(len1 -% len2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_length (HorzBox.(len1 *% flt2))
+make_length (len1 *% flt2)
 |}
-    ; inst "LengthDivides"
+    ; inst "PrimitiveLengthDivides"
         ~name:"/'"
         ~type_:Type.(tLN @-> tLN @-> tFL)
         ~fields:[
@@ -2731,9 +2819,9 @@ make_length (HorzBox.(len1 *% flt2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_float (HorzBox.(len1 /% len2))
+make_float (len1 /% len2)
 |}
-    ; inst "LengthLessThan"
+    ; inst "PrimitiveLengthLessThan"
         ~name:"<'"
         ~type_:Type.(tLN @-> tLN @-> tB)
         ~fields:[
@@ -2745,9 +2833,9 @@ make_float (HorzBox.(len1 /% len2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_bool (HorzBox.(len1 <% len2))
+make_bool (len1 <% len2)
 |}
-    ; inst "LengthGreaterThan"
+    ; inst "PrimitiveLengthGreaterThan"
         ~name:">'"
         ~type_:Type.(tLN @-> tLN @-> tB)
         ~fields:[
@@ -2759,7 +2847,7 @@ make_bool (HorzBox.(len1 <% len2))
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-make_bool (HorzBox.(len2 <% len1))
+make_bool (len2 <% len1)
 |}
     ; inst "PrimitiveSetWordBreakPenalty"
         ~name:"set-word-break-penalty"
@@ -2782,15 +2870,15 @@ Context(HorzBox.{ ctx with
         ~fields:[
         ]
         ~params:[
-          param "hblst1" ~type_:"horz";
-          param "hblst2" ~type_:"horz";
+          param "ibs1" ~type_:"inline_boxes";
+          param "ibs2" ~type_:"inline_boxes";
           param "(ctx, ctxsub)" ~type_:"context";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
 Context(HorzBox.({ ctx with
-  before_word_break = hblst1;
-  after_word_break = hblst2;
+  before_word_break = ibs1;
+  after_word_break  = ibs2;
 }), ctxsub)
 |}
     ; inst "PrimitiveGetEveryWordBreak"
@@ -2803,11 +2891,11 @@ Context(HorzBox.({ ctx with
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let hblst1 = ctx.HorzBox.before_word_break in
-let hblst2 = ctx.HorzBox.after_word_break in
-Tuple([make_horz hblst1; make_horz hblst2])
+let ibs1 = ctx.HorzBox.before_word_break in
+let ibs2 = ctx.HorzBox.after_word_break in
+Tuple([ make_inline_boxes ibs1; make_inline_boxes ibs2 ])
 |}
-    ; inst "BackendProbeCrossReference"
+    ; inst "PrimitiveProbeCrossReference"
         ~name:"probe-cross-reference"
         ~type_:Type.(tS @-> (tOPT tS))
         ~fields:[
@@ -2821,7 +2909,7 @@ match CrossRef.probe k with
 | None    -> Constructor("None", const_unit)
 | Some(v) -> Constructor("Some", make_string v)
 |}
-    ; inst "BackendRegisterDestination"
+    ; inst "PrimitiveRegisterDestination"
         ~name:"register-destination"
         ~type_:Type.(tS @-> tPT @-> tU)
         ~fields:[
@@ -2835,7 +2923,7 @@ match CrossRef.probe k with
 NamedDest.register name p;
 const_unit
 |}
-    ; inst "BackendRegisterLinkToUri"
+    ; inst "PrimitiveRegisterLinkToUri"
         ~name:"register-link-to-uri"
         ~type_:Type.(tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
         ~fields:[
@@ -2854,7 +2942,7 @@ let borderopt = get_option (get_pair get_length get_color) vborderopt in
 Annotation.register (Annotation.Link(Pdfaction.Uri(uri))) (pt, wid, hgt, dpt) borderopt;
 const_unit
 |}
-    ; inst "BackendRegisterLinkToLocation"
+    ; inst "PrimitiveRegisterLinkToLocation"
         ~name:"register-link-to-location"
         ~type_:Type.(tS @-> tPT @-> tLN @-> tLN @-> tLN @-> (tOPT (tPROD [tLN; tCLR])) @-> tU)
         ~fields:[
@@ -2874,7 +2962,7 @@ let destname = NamedDest.get name in
 Annotation.register (Annotation.Link(Pdfaction.GotoName(destname))) (pt, wid, hgt, dpt) borderopt;
 const_unit
 |}
-    ; inst "BackendRegisterOutline"
+    ; inst "PrimitiveRegisterOutline"
         ~name:"register-outline"
         ~type_:Type.((tL(tPROD [tI; tS; tS; tB])) @-> tU)
         ~fields:[
@@ -2887,7 +2975,7 @@ const_unit
 Outline.register (get_list get_outline ol);
 const_unit
 |}
-    ; inst "RegisterDocumentInformationDictionary"
+    ; inst "PrimitiveRegisterDocumentInformation"
         ~name:"register-document-information"
         ~type_:Type.(tDOCINFODIC @-> tU)
         ~fields:[
@@ -2901,7 +2989,7 @@ let docinfodic = make_doc_info_dictionary valuedocinfodic in
 let () = DocumentInformationDictionary.register docinfodic in
 const_unit
 |}
-    ; inst "AbortWithMessage"
+    ; inst "PrimitiveAbortWithMessage"
         ~name:"abort-with-message"
         ~type_:Type.(forall "a" (fun a -> tS @-> a))
         ~fields:[
@@ -2914,7 +3002,7 @@ const_unit
         ~code:{|
 raise (report_dynamic_error msg)
 |}
-    ; inst "LiftString"
+    ; inst "PrimitiveLiftString"
         ~name:"lift-string"
         ~type_:Type.(tS @-> tCODE tS)
         ~fields:[
@@ -2927,7 +3015,7 @@ raise (report_dynamic_error msg)
         ~code:{|
 lift_string_to_code_value s
 |}
-    ; inst "LiftInt"
+    ; inst "PrimitiveLiftInt"
         ~name:"lift-int"
         ~type_:Type.(tI @-> tCODE tI)
         ~fields:[
@@ -2940,7 +3028,7 @@ lift_string_to_code_value s
         ~code:{|
 lift_integer_to_code_value n
 |}
-    ; inst "LiftFloat"
+    ; inst "PrimitiveLiftFloat"
         ~name:"lift-float"
         ~type_:Type.(tFL @-> tCODE tFL)
         ~fields:[
@@ -2953,7 +3041,7 @@ lift_integer_to_code_value n
         ~code:{|
 lift_float_to_code_value r
 |}
-    ; inst "LiftLength"
+    ; inst "PrimitiveLiftLength"
         ~name:"lift-length"
         ~type_:Type.(tLN @-> tCODE tLN)
         ~fields:[
@@ -2966,7 +3054,7 @@ lift_float_to_code_value r
         ~code:{|
 lift_length_to_code_value len
 |}
-    ; inst "PrimitiveGetInputPosition"
+    ; inst "PrimitivePrimitiveGetInputPosition"
         ~name:"get-input-position"
         ~type_:Type.(tIPOS @-> tPROD [tS; tI; tI])
         ~fields:[
@@ -2982,7 +3070,7 @@ let v2 = make_int ipos.input_line in
 let v3 = make_int ipos.input_column in
 Tuple([v1; v2; v3])
 |}
-    ; inst "ReadFile"
+    ; inst "PrimitiveReadFile"
         ~name:"read-file"
         ~type_:Type.(tS @-> tL tS)
         ~fields:[
@@ -2993,7 +3081,7 @@ Tuple([v1; v2; v3])
         ~is_pdf_mode_primitive:true
         ~is_text_mode_primitive:true
         ~code:{|
-let parts = Core_kernel.Filename.parts relpath in
+let parts = Core.Filename.parts relpath in
 begin
   if parts |> List.exists (String.equal "..") then
     report_dynamic_error "cannot access files by using '..'"
@@ -3014,19 +3102,31 @@ let lines = aux Alist.empty in
 close_in inc;
 make_list make_string lines
 |}
-    ; inst "ClipGraphicsByPath"
+    ; inst "PrimitiveClipGraphicsByPath"
         ~name:"clip-graphics-by-path"
         ~type_:Type.(tPATH @-> tGR @-> tGR)
         ~fields:[
         ]
         ~params:[
           param "pathlst" ~type_:"path_value";
-          param "grelem" ~type_:"graphics_element";
+          param "gr" ~type_:"graphics";
         ]
         ~is_pdf_mode_primitive:true
         ~code:{|
-let grelem = GraphicD.clip_graphics grelem pathlst in
-make_graphics grelem
-(* Does it work correctly when len(pathlst) > 1 ?? *)
+make_graphics (GraphicD.make_clip gr pathlst)
+  (* Does it work correctly when len(pathlst) > 1 ?? *)
+|}
+    ; inst "PrimitiveUniteGraphics"
+        ~name:"unite-graphics"
+        ~type_:Type.(tL tGR @-> tGR)
+        ~fields:[
+        ]
+        ~params:[
+          param "value_grs"
+        ]
+        ~is_pdf_mode_primitive:true
+        ~code:{|
+let grs = get_list get_graphics value_grs in
+make_graphics (GraphicD.concat grs)
 |}
     ])

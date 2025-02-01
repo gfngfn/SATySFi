@@ -1,0 +1,26 @@
+@require: stdjabook
+@import: local
+
+StdJaBook.document (|
+  title      = {ファンクタによるスタイル設定},
+  author     = {gfn},
+  show-title = true,
+  show-toc   = false,
+|) '<
+  +Local.PlainCode.code(```
+    #include<stdio.h>
+
+    int main(void) {
+        printf("Hello Functor!");
+        return 0;
+    }
+  ```);
+  +Local.RetroTerm.code(```
+    $ gcc hello.c -o hello
+    $ ./hello
+    Hello Functor!
+  ```);
+  +Code.code(```
+    print("Hello!")
+  ```);
+>

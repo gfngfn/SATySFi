@@ -1,45 +1,49 @@
 @require: gr
 
-module Proof : sig
+module Proof :> sig
 
-  direct \derive : [math?; bool?; math list; math] math-cmd
-  direct \derive-multi : [math?; bool?; length; math list; math] math-cmd
+  val \derive : math [?(name : math-text, b : bool) list math-text, math-text]
+  val \derive-multi : math [?(name : math-text, b : bool) length, list math-text, math-text]
 
 end = struct
 
-  let-math \math-space len =
-    text-in-math MathOrd (fun _ -> inline-skip len)
+  val math ctx \math-space len =
+    embed-inline-to-math MathOrd (inline-skip len)
 
 
-  let length-max len1 len2 =
+  val length-max len1 len2 =
     if len1 <' len2 then len2 else len1
 
 
-  let derive nameopt bopt widopt mlst1 m2 =
+  val derive ctx nameopt bopt widopt (mlst1 : list math-text) (m2 : math-text) =
     let ib-space =
       match widopt with
       | None    -> inline-skip 30pt
       | Some(_) -> discretionary 100 (inline-skip 30pt) inline-fil inline-fil
+      end
     in
-    text-in-math MathInner (fun ctx -> (
+    embed-inline-to-math MathInner (
       let ibacc1 =
         (mlst1 |> List.fold-left-adjacent (fun ibacc1 m prevopt _ -> (
-          let ibm = embed-math ctx m in
-            match prevopt with
-            | None    -> inline-fil ++ ibm
-            | Some(_) -> ibacc1 ++ ib-space ++ ibm
+          let ibm = embed-math ctx (read-math ctx m) in
+          match prevopt with
+          | None    -> inline-fil ++ ibm
+          | Some(_) -> ibacc1 ++ ib-space ++ ibm
+          end
         )) inline-nil) ++ inline-fil
       in
       let ib1 =
         match widopt with
         | None      -> ibacc1
         | Some(wid) -> embed-block-bottom ctx wid (fun ctx -> line-break true true ctx ibacc1)
+        end
       in
-      let ib2 = inline-fil ++ (embed-math ctx m2) ++ inline-fil in
+      let ib2 = inline-fil ++ (embed-math ctx (read-math ctx m2)) ++ inline-fil in
       let w =
         match widopt with
-        | None      -> length-max (get-natural-width ib1) (get-natural-width ib2)
-        | Some(wid) -> length-max wid (get-natural-width ib2)
+        | None      -> length-max (Pervasives.get-natural-width ib1) (Pervasives.get-natural-width ib2)
+        | Some(wid) -> length-max wid (Pervasives.get-natural-width ib2)
+        end
       in
       let color = get-text-color ctx in
       let thickness = 0.5pt in
@@ -50,32 +54,37 @@ end = struct
             ((fun _ -> []), 0pt)
 
         | Some(name) ->
-            let ib = embed-math ctx name in
+            let ib = embed-math ctx (read-math ctx name) in
             let (wname, _, _) = get-natural-metrics ib in
             let wname =
               match bopt with
               | None        -> wname
               | Some(false) -> wname
               | Some(true)  -> 0pt
+              end
             in
-              ((fun pt -> [Gr.text-rightward pt ib]), wname)
+            ((fun pt -> [Gr.text-rightward pt ib]), wname)
+        end
       in
+      let axis-height = get-font-size ctx *' get-math-axis-height-ratio ctx in
       let bar =
-          inline-graphics w (thickness +' gap) gap (fun (x, y) ->
-            List.append
-              [ fill color (Gr.rectangle (x, y) (x +' w, y +' thickness)); ]
-              (glnamef (x +' w, y -' (get-axis-height ctx)))
-          )
+          inline-graphics w (thickness +' gap) gap (fun (x, y) -> (
+            let grs =
+              fill color (Gr.rectangle (x, y) (x +' w, y +' thickness))
+                :: (glnamef (x +' w, y -' axis-height))
+            in
+            unite-graphics grs
+          ))
       in
-        line-stack-bottom [ib1; bar; ib2]
+        line-stack-bottom [ib1, bar, ib2]
           ++ inline-skip wname
-    ))
+    )
 
 
-  let-math \derive ?:nameopt ?:bopt mlst m =
-    derive nameopt bopt None mlst m
+  val math ctx \derive ?(name = nameopt, b = bopt) ms m =
+    derive ctx nameopt bopt None ms m
 
-  let-math \derive-multi ?:nameopt ?:bopt w =
-    derive nameopt bopt (Some(w))
+  val math ctx \derive-multi ?(name = nameopt, b = bopt) w ms m =
+    derive ctx nameopt bopt (Some(w)) ms m
 
 end

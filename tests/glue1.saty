@@ -1,9 +1,10 @@
 @import: head
 
-let-inline ctx \glueneg = inline-glue 0pt 0pt (0pt -' 100pt) in
+let open Head in
+let inline ctx \glueneg = inline-glue 0pt 0pt (0pt -' 100pt) in
 document (|
-  title = {Glue Test};
-  author = {Takashi SUWA};
+  title = {Glue Test},
+  author = {Takashi SUWA},
 |) '<
   +frame <
     +p {

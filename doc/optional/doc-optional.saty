@@ -1,0 +1,18 @@
+@require: stdjabook
+
+StdJaBook.document (|
+  title      = {ラベルつきオプション引数},
+  author     = {gfn},
+  show-title = true,
+  show-toc   = false,
+|) '<
+  +StdJaBook.section{ラベルなし}<
+    +StdJaBook.p{
+      本文1です．
+      \StdJaBook.ref(`opt`);章はラベルあり．
+    }
+  >
+  +StdJaBook.section?(ref = `opt`)({ラベルあり})<
+    +StdJaBook.p{本文2です．}
+  >
+>

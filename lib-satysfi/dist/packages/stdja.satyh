@@ -6,32 +6,29 @@
 @require: code
 @require: color
 @require: option
+@require: paper-size
 @require: annot
 
 
-type config = (|
-  paper-size    : page;
-  show-pages    : bool;
-  text-width    : length;
-  text-height   : length;
-  text-origin   : point;
-  header-origin : point;
-  footer-origin : point;
-  header-width  : length;
-  footer-width  : length;
-|)
+module StdJa :> sig
 
-module StdJa : sig
-
-  val default-config : config
-
-  val document : 'a -> config ?-> block-text -> document
-    constraint 'a :: (|
-      title : inline-text;
-      author : inline-text;
-      show-toc : bool;
-      show-title : bool;
-    |)
+  val document :
+    ?(
+      show-page-number : bool,
+      show-title       : bool,
+      show-toc         : bool,
+      paper-size       : length * length,
+      text-width       : length,
+      text-height      : length,
+      text-origin      : Pervasives.point,
+      header-origin    : Pervasives.point,
+      footer-origin    : Pervasives.point,
+      header-width     : length,
+      footer-width     : length,
+    ) (|
+      title : inline-text,
+      author : inline-text,
+    |) -> block-text -> document
 
   val font-latin-roman  : string * float * float
   val font-latin-bold   : string * float * float
@@ -40,14 +37,15 @@ module StdJa : sig
   val font-latin-mono   : string * float * float
   val font-cjk-mincho   : string * float * float
   val font-cjk-gothic   : string * float * float
-  direct \ref : [string] inline-cmd
-  direct \ref-page : [string] inline-cmd
-  direct \figure : [inline-text; block-text] inline-cmd
-  direct +p : [inline-text] block-cmd
-  direct +pn : [inline-text] block-cmd
-  direct +section : [string?; string?; inline-text; block-text] block-cmd
-  direct +subsection : [string?; string?; inline-text; block-text] block-cmd
-  direct \emph : [inline-text] inline-cmd
+
+  val \ref : inline [string]
+  val \ref-page : inline [string]
+  val \figure : inline [inline-text, block-text]
+  val +p : block [inline-text]
+  val +pn : block [inline-text]
+  val +section : block [?(label : string, outline-title : string) inline-text, block-text]
+  val +subsection : block [?(label : string, outline-title : string) inline-text, block-text]
+  val \emph : inline [inline-text]
 
 end = struct
 
@@ -56,65 +54,67 @@ end = struct
     | TOCElementSubsection of string * inline-text
 
 
-  let generate-fresh-label =
-    let-mutable count <- 0 in
+  val generate-fresh-label =
+    let mutable count <- 0 in
       (fun () -> (
         let () = count <- !count + 1 in
           `generated:` ^ (arabic (!count))
       ))
 
 
-  let no-pads = (0pt, 0pt, 0pt, 0pt)
+  val no-pads = (0pt, 0pt, 0pt, 0pt)
 
 
-  let-inline ctx \ref key =
+  val inline ctx \ref key =
     let opt = get-cross-reference (key ^ `:num`) in
     let it =
       match opt with
       | None    -> {?}
       | Some(s) -> embed-string s
+      end
     in
-      inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
+    inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
 
 
-  let-inline ctx \ref-page key =
+  val inline ctx \ref-page key =
     let opt = get-cross-reference (key ^ `:page`) in
     let it =
       match opt with
       | None    -> {?}
       | Some(s) -> embed-string s
+      end
     in
-      inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
+    inline-frame-breakable no-pads (Annot.link-to-location-frame key None) (read-inline ctx it)
 
 
-  let font-size-normal  = 12pt
-  let font-size-title   = 32pt
-  let font-size-author  = 16pt
-  let font-size-section = 18pt
-  let font-size-subsection = 16pt
+  val font-size-normal  = 12pt
+  val font-size-title   = 32pt
+  val font-size-author  = 16pt
+  val font-size-section = 18pt
+  val font-size-subsection = 16pt
 
-  let section-top-margin = 20pt
-  let section-bottom-margin = 12pt
+  val section-top-margin = 20pt
+  val section-bottom-margin = 12pt
 
-  let font-ratio-latin = 1.
-  let font-ratio-cjk = 0.88
+  val font-ratio-latin = 1.
+  val font-ratio-cjk = 0.88
 
-  let font-latin-roman  = (`Junicode`   , font-ratio-latin, 0.)
-  let font-latin-bold   = (`Junicode-b` , font-ratio-latin, 0.)
-  let font-latin-italic = (`Junicode-it`, font-ratio-latin, 0.)
-  let font-latin-sans   = (`lmsans`    , font-ratio-latin, 0.)
-  let font-latin-mono   = (`lmmono`    , font-ratio-latin, 0.)
-  let font-cjk-mincho   = (`ipaexm`    , font-ratio-cjk  , 0.)
-  let font-cjk-gothic   = (`ipaexg`    , font-ratio-cjk  , 0.)
+  val font-latin-roman  = (`Junicode`   , font-ratio-latin, 0.)
+  val font-latin-bold   = (`Junicode-b` , font-ratio-latin, 0.)
+  val font-latin-italic = (`Junicode-it`, font-ratio-latin, 0.)
+  val font-latin-sans   = (`lmsans`    , font-ratio-latin, 0.)
+  val font-latin-mono   = (`lmmono`    , font-ratio-latin, 0.)
+  val font-cjk-mincho   = (`ipaexm`    , font-ratio-cjk  , 0.)
+  val font-cjk-gothic   = (`ipaexg`    , font-ratio-cjk  , 0.)
 
-  let set-cjk-font font ctx =
+  val set-cjk-font font ctx =
     ctx |> set-font HanIdeographic font
         |> set-font Kana           font
 
 
-  let get-standard-context wid =
-    get-initial-context wid (command \math)
-      |> set-code-text-command (command \code)
+  val get-standard-context wid =
+    get-initial-context wid (command \Math.math)
+      |> set-code-text-command (command \Code.code)
       |> set-dominant-wide-script Kana
       |> set-language Kana Japanese
       |> set-language HanIdeographic Japanese
@@ -127,24 +127,24 @@ end = struct
       |> set-hyphen-penalty 100
 
 
-  let-mutable ref-float-boxes <- []
+  val mutable ref-float-boxes <- []
 
 
-  let height-of-float-boxes pageno =
+  val height-of-float-boxes pageno =
 %    let () = display-message `get height` in
     (!ref-float-boxes) |> List.fold-left (fun h (pn, bb) -> (
       if pn < pageno then h +' (get-natural-length bb) else h
     )) 0pt
 
 
-  let-mutable ref-figure <- 0
+  val mutable ref-figure <- 0
 
 
-  let-inline ctx \figure caption inner =
+  val inline ctx \figure caption inner =
     let () = ref-figure <- !ref-figure + 1 in
     let s-num = embed-string (arabic (!ref-figure)) in
     let bb-inner =
-      let d (_, _) _ _ _ = [] in
+      let d (_, _) _ _ _ = Gr.empty in
       block-frame-breakable ctx (2pt, 2pt, 2pt, 2pt) (d, d, d, d) (fun ctx -> (
         read-block ctx inner
           +++ line-break true true ctx (inline-fil ++ read-inline ctx {図#s-num; #caption;} ++ inline-fil)
@@ -156,7 +156,7 @@ end = struct
       ))
 
 
-let title-deco =
+  val title-deco =
     let pads = (5pt, 5pt, 10pt, 10pt) in
     let deco (x, y) wid hgt dpt =
       let path1 =
@@ -187,15 +187,15 @@ let title-deco =
             |> line-to (xL, yB)
             |> close-with-bezier (xL -' cx, yB +' cy) (xL -' cx, yT -' cy)
       in
-        [
-          stroke 3pt Color.black path1;
-          stroke 1pt Color.black path2;
-        ]
+      unite-graphics [
+        stroke 3pt Color.black path1,
+        stroke 1pt Color.black path2,
+      ]
     in
-      (deco, deco, deco, deco)
+    (deco, deco, deco, deco)
 
 
-  let-block ctx +make-title it-title it-author =
+  val block ctx +make-title it-title it-author =
     let pads = (20pt, 20pt, 10pt, 10pt) in
     block-frame-breakable ctx pads title-deco (fun ctx -> (
       let ctx-title =
@@ -216,7 +216,7 @@ let title-deco =
             |> terminate-path
         in
         inline-graphics wid thk 0pt (fun pt -> (
-          [ stroke thk Color.black (path pt); ]
+          stroke thk Color.black (path pt)
         ))
       in
       let ib-author = read-inline ctx-author it-author in
@@ -224,72 +224,74 @@ let title-deco =
 %        if get-text-width ctx <' get-natural-width ib-title then
 %          form-paragraph ctx-title (ib-title ++ inline-fil)
 %        else
-          form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil)
+          Pervasives.form-paragraph ctx-title (inline-fil ++ ib-title ++ inline-fil)
       in
-      let bb-line = form-paragraph ctx (ib-line ++ inline-fil) in
-      let bb-author = form-paragraph ctx-author (inline-fil ++ ib-author) in
+      let bb-line = Pervasives.form-paragraph ctx (ib-line ++ inline-fil) in
+      let bb-author = Pervasives.form-paragraph ctx-author (inline-fil ++ ib-author) in
         bb-title +++ bb-line +++ bb-author
     ))
 
 
-  let make-section-title ctx =
+  val make-section-title ctx =
     ctx |> set-font-size font-size-section
         |> set-font Latin font-latin-sans
         |> set-cjk-font font-cjk-gothic
 
 
-  let make-subsection-title ctx =
+  val make-subsection-title ctx =
     ctx |> set-font-size font-size-subsection
         |> set-font Latin font-latin-sans
         |> set-cjk-font font-cjk-gothic
 
 
-  let-mutable toc-acc-ref <- []
-  let-mutable outline-ref <- []
+  val mutable toc-acc-ref <- []
+  val mutable outline-ref <- []
 
 
-  let get-cross-reference-number label =
+  val get-cross-reference-number label =
     match get-cross-reference (label ^ `:num`) with
     | None    -> `?`
     | Some(s) -> s
+    end
 
 
-  let get-cross-reference-page label =
+  val get-cross-reference-page label =
     match get-cross-reference (label ^ `:page`) with
     | None    -> `?`
     | Some(s) -> s
+    end
 
 
-  let default-config =
-    (|
-      show-pages    = true;
-      paper-size    = A4Paper;
-      text-width    = 440pt;
-      text-height   = 630pt;
-      text-origin   = (80pt, 100pt);
-      header-origin = (40pt, 30pt);
-      footer-origin = (40pt, 780pt);
-      header-width  = 520pt;
-      footer-width  = 520pt;
-    |)
-
-
-  let document record ?:configopt inner =
+  val document
+    ?(
+      show-page-number = show-page-number-opt,
+      show-title       = show-title-opt,
+      show-toc         = show-toc-opt,
+      paper-size       = paper-size-opt,
+      text-width       = text-width-opt,
+      text-height      = text-height-opt,
+      text-origin      = text-origin-opt,
+      header-origin    = header-origin-opt,
+      footer-origin    = footer-origin-opt,
+      header-width     = header-width-opt,
+      footer-width     = footer-width-opt,
+    ) record inner =
     % -- mandatory designations --
     let title = record#title in
     let author = record#author in
 
     % -- optional designations --
-    let config = Option.from default-config configopt in
-    let page = config#paper-size in
-    let txtorg = config#text-origin in
-    let txtwid = config#text-width in
-    let txthgt = config#text-height in
-    let hdrorg = config#header-origin in
-    let ftrorg = config#footer-origin in
-    let hdrwid = config#header-width in
-    let ftrwid = config#footer-width in
-    let show-pages = config#show-pages in
+    let show-pages = show-page-number-opt |> Option.from true in
+    let show-title = show-title-opt |> Option.from true in
+    let show-toc = show-toc-opt |> Option.from false in
+    let page = paper-size-opt |> Option.from PaperSize.a4 in
+    let txtwid = text-width-opt |> Option.from 440pt in
+    let txthgt = text-height-opt |> Option.from 630pt in
+    let txtorg = text-origin-opt |> Option.from (80pt, 100pt) in
+    let hdrorg = header-origin-opt |> Option.from (40pt, 30pt) in
+    let ftrorg = footer-origin-opt |> Option.from (40pt, 780pt) in
+    let hdrwid = header-width-opt |> Option.from 520pt in
+    let ftrwid = footer-width-opt |> Option.from 520pt in
 
     % -- constants
     let thickness = 0.5pt in
@@ -298,7 +300,7 @@ let title-deco =
 
     % -- title --
     let bb-title =
-      if record#show-title then
+      if show-title then
         read-block ctx-doc '<+make-title(title)(author);>
       else
         block-nil
@@ -309,7 +311,7 @@ let title-deco =
 
     % -- table of contents --
     let bb-toc =
-      if not record#show-toc then
+      if not show-toc then
         block-nil
       else
         let bb-toc-title =
@@ -325,15 +327,15 @@ let title-deco =
                     (inline-frame-breakable no-pads (Annot.link-to-location-frame label None)
                     (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page))
 
-          | TOCElementSubsection(label, title) ->
-                let it-num = embed-string (get-cross-reference-number label) in
-                let it-page = embed-string (get-cross-reference-page label) in
-                  bbacc +++ line-break true true ctx-doc
-                    (inline-skip 20pt ++ (inline-frame-breakable no-pads
-                      (Annot.link-to-location-frame label None)
-                      (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page)))
-
-            )) block-nil
+            | TOCElementSubsection(label, title) ->
+                  let it-num = embed-string (get-cross-reference-number label) in
+                  let it-page = embed-string (get-cross-reference-page label) in
+                    bbacc +++ line-break true true ctx-doc
+                      (inline-skip 20pt ++ (inline-frame-breakable no-pads
+                        (Annot.link-to-location-frame label None)
+                        (read-inline ctx-doc {#it-num;. #title;} ++ inline-fil ++ read-inline ctx-doc it-page)))
+            end
+          )) block-nil
         in
         bb-toc-title +++ bb-toc-main
     in
@@ -343,8 +345,8 @@ let title-deco =
       let hgtfb = height-of-float-boxes pbinfo#page-number in
       let (txtorgx, txtorgy) = txtorg in
       (|
-        text-origin = (txtorgx, txtorgy +' hgtfb);
-        text-height = txthgt -' hgtfb;
+        text-origin = (txtorgx, txtorgy +' hgtfb),
+        text-height = txthgt -' hgtfb,
       |)
     in
     let pagepartsf pbinfo =
@@ -379,7 +381,7 @@ let title-deco =
           line-break true true ctx ib-text
             +++ line-break true true (ctx |> set-paragraph-margin 0pt 6pt)
               ((inline-graphics hdrwid thickness 0pt
-                (fun (x, y) -> [ fill Color.black (Gr.rectangle (x, y) (x +' hdrwid, y +' thickness))])) ++ inline-fil)
+                (fun (x, y) -> fill Color.black (Gr.rectangle (x, y) (x +' hdrwid, y +' thickness)))) ++ inline-fil)
             +++ bb-float-boxes
       in
       let footer =
@@ -392,10 +394,10 @@ let title-deco =
           block-nil
       in
         (|
-          header-origin  = hdrorg;
-          header-content = header;
-          footer-origin  = ftrorg;
-          footer-content = footer;
+          header-origin  = hdrorg,
+          header-content = header,
+          footer-origin  = ftrorg,
+          footer-content = footer,
         |)
     in
     let doc = page-break page pagecontf pagepartsf (bb-title +++ bb-toc +++ bb-main) in
@@ -403,17 +405,17 @@ let title-deco =
       doc
 
 
-  let-mutable needs-indentation-ref <- true
+  val mutable needs-indentation-ref <- true
 
-  let-mutable num-section <- 0
-  let-mutable num-subsection <- 0
+  val mutable num-section <- 0
+  val mutable num-subsection <- 0
 
 
-  let quad-indent ctx =
+  val quad-indent ctx =
     inline-skip (get-font-size ctx)
 
 
-  let-block ctx +p inner =
+  val block ctx +p inner =
     let needs-indentation =
       if !needs-indentation-ref then true else
         let () = needs-indentation-ref <- true in
@@ -426,16 +428,16 @@ let title-deco =
       else
         ib-inner ++ inline-fil
     in
-      form-paragraph ctx br-parag
+    Pervasives.form-paragraph ctx br-parag
 
 
-  let-block ctx +pn inner =
+  val block ctx +pn inner =
     let () = needs-indentation-ref <- true in
     let ib-inner = read-inline ctx inner in
-      form-paragraph ctx (ib-inner ++ inline-fil)
+    Pervasives.form-paragraph ctx (ib-inner ++ inline-fil)
 
 
-  let section-scheme ctx label title outline-title-opt inner =
+  val section-scheme ctx label title outline-title-opt inner =
     let ctx-title = make-section-title ctx in
     let () = num-section <- !num-section + 1 in
     let () = num-subsection <- 0 in
@@ -459,7 +461,7 @@ let title-deco =
       bb-title +++ bb-inner
 
 
-  let subsection-scheme ctx label title outline-title-opt inner =
+  val subsection-scheme ctx label title outline-title-opt inner =
     let () = num-subsection <- !num-subsection + 1 in
     let () = needs-indentation-ref <- false in
     let s-num = arabic (!num-section) ^ `.` ^ arabic (!num-subsection) in
@@ -482,34 +484,32 @@ let title-deco =
       bb-title +++ bb-inner
 
 
-  let-block ctx +section ?:labelopt ?:outline-title-opt title inner =
+  val block ctx +section ?(label = labelopt, outline-title = outline-title-opt) title inner =
     let label =
       match labelopt with
       | None        -> generate-fresh-label ()
       | Some(label) -> label
+      end
     in
       section-scheme ctx label title outline-title-opt inner
 
 
-  let-block ctx +subsection ?:labelopt ?:outline-title-opt title inner =
+  val block ctx +subsection ?(label = labelopt, outline-title = outline-title-opt) title inner =
     let label =
       match labelopt with
       | None        -> generate-fresh-label ()
       | Some(label) -> label
+      end
     in
       subsection-scheme ctx label title outline-title-opt inner
 
 
-  let-inline ctx \emph inner =
+  val inline ctx \emph inner =
     let ctx-emph =
       ctx |> set-font Latin font-latin-italic
           |> set-cjk-font font-cjk-gothic
           |> set-text-color (CMYK(1., 0., 0., 0.))
     in
-      read-inline ctx-emph inner
+    read-inline ctx-emph inner
 
 end
-
-
-let document = StdJa.document
-  % ad-hoc

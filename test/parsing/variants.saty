@@ -1,2 +1,6 @@
-type t = X | Y
-and s = Z of t | W of u
+module Variants = struct
+
+  type t = X | Y
+  and s = Z of t | W of u
+
+end

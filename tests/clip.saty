@@ -2,51 +2,47 @@
 @import: head
 @import: ../lib-satysfi/dist/packages/color
 
+let open Pervasives in
+let open Head in
 
-let-inline ctx \do-fill wid f =
-    let ib = use-image-by-width (load-image `images/peppers-rgb.jpg`) wid
-    in
-    let (w, h, d) = get-natural-metrics ib in
-    inline-graphics w h d (fun (x, y) -> [
-        fill (Color.blue) (f x y w (h +' d))
-    ])
-
-let-inline ctx \do-clip wid f =
-    let ib = use-image-by-width (load-image `images/peppers-rgb.jpg`) wid
-    in
-    let (w, h, d) = get-natural-metrics ib in
-    inline-graphics w h d (fun (x, y) -> [
-        draw-text (x, y) ib
-            |> clip-graphics-by-path (f x y w (h +' d))
-    ])
-
+let inline ctx \do-fill wid f =
+  let ib = use-image-by-width (load-image `images/peppers-rgb.jpg`) wid in
+  let (w, h, d) = get-natural-metrics ib in
+  inline-graphics w h d (fun (x, y) ->
+    fill (Color.blue) (f x y w (h +' d))
+  )
+in
+let inline ctx \do-clip wid f =
+  let ib = use-image-by-width (load-image `images/peppers-rgb.jpg`) wid in
+  let (w, h, d) = get-natural-metrics ib in
+  inline-graphics w h d (fun (x, y) ->
+    draw-text (x, y) ib
+      |> clip-graphics-by-path (f x y w (h +' d))
+  )
+in
 let path-circle x y w h =
-    start-path (x +' w *' 0.5, y)
-        |> bezier-to (x +' w *' 0.25, y) (x, y +' h *' 0.25) (x, y +' h *' 0.5)
-        |> bezier-to (x, y +' h *' 0.75) (x +' w *' 0.25, y +' h) (x +' w *' 0.5, y +' h)
-        |> bezier-to (x +' w *' 0.75, y +' h) (x +' w, y +' h *' 0.75) (x +' w, y +' h *' 0.5)
-        |> bezier-to (x +' w, y +' h *' 0.25) (x +' w *' 0.75, y) (x +' w *' 0.5, y)
-        |> close-with-line
+  start-path (x +' w *' 0.5, y)
+    |> bezier-to (x +' w *' 0.25, y) (x, y +' h *' 0.25) (x, y +' h *' 0.5)
+    |> bezier-to (x, y +' h *' 0.75) (x +' w *' 0.25, y +' h) (x +' w *' 0.5, y +' h)
+    |> bezier-to (x +' w *' 0.75, y +' h) (x +' w, y +' h *' 0.75) (x +' w, y +' h *' 0.5)
+    |> bezier-to (x +' w, y +' h *' 0.25) (x +' w *' 0.75, y) (x +' w *' 0.5, y)
+    |> close-with-line
 in
-
 let path-donut x y w h =
-    unite-path
-        (path-circle x y w h)
-        (path-circle (x +' w *' 0.25) (y +' h *' 0.25) (w *' 0.5) (h *' 0.5))
+  unite-path
+    (path-circle x y w h)
+    (path-circle (x +' w *' 0.25) (y +' h *' 0.25) (w *' 0.5) (h *' 0.5))
 in
-
-
-
 document (|
-  title  = {Clipping Examples};
-  author = {\SATySFi; Contributors};
+  title  = {Clipping Examples},
+  author = {\SATySFi; Contributors},
 |) '<
-    +p {
-        \do-fill (5cm) (path-circle);
-        \do-clip (5cm) (path-circle);
-    }
-    +p {
-        \do-fill (5cm) (path-donut);
-        \do-clip (5cm) (path-donut);
-    }
+  +p{
+    \do-fill(5cm)(path-circle);
+    \do-clip(5cm)(path-circle);
+  }
+  +p{
+    \do-fill(5cm)(path-donut);
+    \do-clip(5cm)(path-donut);
+  }
 >

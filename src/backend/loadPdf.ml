@@ -12,7 +12,7 @@ module IRSet = MutableSet.Make
   end)
 
 
-let rec collect_direct_objects (pdfmain : Pdf.t) (pdfext : Pdf.t) (pdfobj : Pdf.pdfobject) : Pdf.pdfobject =
+let collect_direct_objects (pdfmain : Pdf.t) (pdfext : Pdf.t) (pdfobj : Pdf.pdfobject) : Pdf.pdfobject =
 
   let irset = IRSet.create 32 in
 

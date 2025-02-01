@@ -1,9 +1,13 @@
-let pats-test1 =
-  match a with
-  | b when c -> d
-  | b -> d
+module Pats = struct
 
-let pats-test2 =
-  match a with
-  | b -> d
-  | b when c -> d
+  val pats-test1 =
+    match a with
+    | b -> d
+    end
+
+  val pats-test2 =
+    match a with
+    | b -> d
+    end
+
+end

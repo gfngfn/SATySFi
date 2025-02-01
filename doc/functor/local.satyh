@@ -1,0 +1,26 @@
+@require: code
+@require: color
+
+module Local = struct
+
+  module RetroTermSettings = struct
+    val font-family      = `lmmono`
+    val text-color       = RGB(0., 1., 0.)
+    val fill-color       = Gray(0.25)
+    val stroke-color     = Color.green
+    val stroke-thickness = 2pt
+  end
+
+  module RetroTerm = Code.Make RetroTermSettings
+
+  module PlainCodeSettings = struct
+    val font-family      = `Menlo`
+    val text-color       = Color.black
+    val fill-color       = Gray(0.95)
+    val stroke-color     = Gray(0.75)
+    val stroke-thickness = 1pt
+  end
+
+  module PlainCode = Code.Make PlainCodeSettings
+
+end

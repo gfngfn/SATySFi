@@ -1,5 +1,9 @@
-type t = a -> b
-and s = A | B
-and u =
-  | A
-  | B
+module Toplevel = struct
+
+  type t = a -> b
+  and s = A | B
+  and u =
+    | A
+    | B
+
+end

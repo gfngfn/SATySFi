@@ -1,2 +1,6 @@
-type t = a * b
-and s = a * b * c
+module Txprod = struct
+
+  type t = a * b
+  and s = a * b * c
+
+end

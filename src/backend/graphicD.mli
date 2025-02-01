@@ -5,29 +5,27 @@ open GraphicBase
 
 type dash = length * length * length
 
-type 'a element
-
 type 'a t
 
 val empty : 'a t
 
-val extend : 'a t -> 'a element -> 'a t
+val concat : ('a t) list -> 'a t
 
-val singleton : 'a element -> 'a t
+val shift : point -> 'a t -> 'a t
 
-val shift_element : point -> 'a element -> 'a element
+val get_bbox : (point -> 'a -> bbox_corners) -> 'a t -> bbox_corners option
 
-val get_element_bbox : (point -> 'a -> point * point) -> 'a element -> point * point
+val make_fill : color -> path list -> 'a t
 
-val make_fill : color -> path list -> 'a element
+val make_stroke : length -> color -> path list -> 'a t
 
-val make_stroke : length -> color -> path list -> 'a element
+val make_dashed_stroke : length -> dash -> color -> path list -> 'a t
 
-val make_dashed_stroke : length -> dash -> color -> path list -> 'a element
+val make_text : point -> 'a -> 'a t
 
-val make_text : point -> 'a -> 'a element
+val make_linear_trans : matrix -> 'a t -> 'a t
 
-val make_linear_trans : (float * float * float * float) -> 'a element -> 'a element
+val make_clip : 'a t -> path list -> 'a t
 
 val pdfops_of_text : point -> string -> length -> color -> OutputText.t -> Pdfops.t list
 
@@ -46,5 +44,3 @@ val pdfops_test_skip_margins : color -> point -> length -> (bool * length) optio
 val pdfops_test_scale : color -> point -> length -> Pdfops.t list
 
 val to_pdfops : 'a t -> (point -> 'a -> Pdfops.t list) -> Pdfops.t list
-
-val clip_graphics : 'a element -> path list -> 'a element

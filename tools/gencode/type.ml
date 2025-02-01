@@ -77,7 +77,7 @@ let to_code t =
     Format.fprintf ppf "%s" name
   in
   let forall ~var ppf pp body =
-    Format.fprintf ppf "(let %s = ~@@ (PolyBound(BoundID.fresh UniversalKind ())) in (%a))"
+    Format.fprintf ppf "(let %s = ~@@ (PolyBound(BoundID.fresh ())) in (%a))"
       var pp body
   in
   Format.asprintf "~%% (%a)"
@@ -104,14 +104,15 @@ let tLN         = tycon0 "tLN"         "length"
 let tS          = tycon0 "tS"          "string"
 let tIT         = tycon0 "tIT"         "inline-text"
 let tBT         = tycon0 "tBT"         "block-text"
+let tMT         = tycon0 "tMT"         "math-text"
 let tIB         = tycon0 "tIB"         "inline-boxes"
 let tBB         = tycon0 "tBB"         "block-boxes"
+let tMB         = tycon0 "tMB"         "math-boxes"
 let tCTX        = tycon0 "tCTX"        "context"
 let tTCTX       = tycon0 "tTCTX"       "text-info"
 let tPATH       = tycon0 "tPATH"       "path"
 let tPRP        = tycon0 "tPRP"        "pre-path"
 let tDOC        = tycon0 "tDOC"        "document"
-let tMATH       = tycon0 "tMATH"       "math"
 let tGR         = tycon0 "tGR"         "graphics"
 let tIMG        = tycon0 "tIMG"        "image"
 let tRE         = tycon0 "tRE"         "regexp"

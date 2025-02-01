@@ -5,98 +5,67 @@ type input_kind =
   | SATySFi
   | Markdown of string
 
+type output_mode =
+  | PdfMode
+  | TextMode of string list
+
 type state = {
-  mutable input_kind      : input_kind;
-  mutable input_file      : abs_path option;
-  mutable output_file     : abs_path option;
-  mutable type_check_only : bool;
-  mutable bytecomp_mode   : bool;
-  mutable show_fonts      : bool;
-  mutable show_full_path  : bool;
-  mutable debug_show_bbox : bool;
-  mutable debug_show_space : bool;
-  mutable debug_show_block_bbox : bool;
-  mutable debug_show_block_space : bool;
-  mutable debug_show_overfull : bool;
-  mutable mode             : (string list) option;
-  mutable extra_config_paths : string list option;
-  mutable no_default_config_paths : bool;
-  mutable page_number_limit : int;
+  input_file             : abs_path;
+  output_file            : abs_path option;
+  extra_config_paths     : (string list) option;
+  output_mode            : output_mode;
+  input_kind             : input_kind;
+  page_number_limit      : int;
+  show_full_path         : bool;
+  debug_show_bbox        : bool;
+  debug_show_space       : bool;
+  debug_show_block_bbox  : bool;
+  debug_show_block_space : bool;
+  debug_show_overfull    : bool;
+  type_check_only        : bool;
+  bytecomp               : bool;
+  show_fonts             : bool;
+  no_default_config      : bool;
 }
 
 
-let state = {
-  input_kind = SATySFi;
-  input_file = None;
-  output_file = None;
-  type_check_only = false;
-  bytecomp_mode   = false;
-  show_full_path  = false;
-  show_fonts      = false;
-  debug_show_bbox = false;
-  debug_show_space = false;
-  debug_show_block_bbox = false;
-  debug_show_block_space = false;
-  debug_show_overfull = false;
-  mode             = None;
-  extra_config_paths = None;
-  no_default_config_paths = false;
-  page_number_limit       = 10000;
-}
+let state = ref None
 
-let set_input_kind ikd = state.input_kind <- ikd
-let get_input_kind ()  = state.input_kind
 
-let set_input_file abspath = state.input_file <- Some(abspath)
-let input_file ()          = state.input_file
+let set r =
+  state := Some(r)
+
+
+let get () =
+  match !state with
+  | None    -> assert false
+  | Some(r) -> r
+
+
+let get_input_file ()              = (get ()).input_file
+let get_output_file ()             = (get ()).output_file
+let get_extra_config_paths ()      = (get ()).extra_config_paths
+let get_output_mode ()             = (get ()).output_mode
+let get_input_kind ()              = (get ()).input_kind
+let get_page_number_limit ()       = (get ()).page_number_limit
+let does_show_full_path ()         = (get ()).show_full_path
+let does_debug_show_bbox ()        = (get ()).debug_show_bbox
+let does_debug_show_space ()       = (get ()).debug_show_space
+let does_debug_show_block_bbox ()  = (get ()).debug_show_block_bbox
+let does_debug_show_block_space () = (get ()).debug_show_block_space
+let does_debug_show_overfull ()    = (get ()).debug_show_overfull
+let is_type_check_only ()          = (get ()).type_check_only
+let is_bytecomp_mode ()            = (get ()).bytecomp
+let does_show_fonts ()             = (get ()).show_fonts
+let use_no_default_config ()       = (get ()).no_default_config
+
 
 let job_directory () =
-  match state.input_file with
-  | None          -> assert false
-  | Some(abspath) -> Filename.dirname (get_abs_path_string abspath)
+  let abspath = get_input_file () in
+  Filename.dirname (get_abs_path_string abspath)
 
-let set_show_fonts () = state.show_fonts <- true
-let show_fonts ()     = state.show_fonts
 
-let set_output_file abspath = state.output_file <- Some(abspath)
-let output_file ()          = state.output_file
-
-let set_type_check_only () = state.type_check_only <- true
-let type_check_only ()     = state.type_check_only
-
-let set_bytecomp_mode () = state.bytecomp_mode <- true
-let bytecomp_mode ()     = state.bytecomp_mode
-
-let set_show_full_path () = state.show_full_path <- true
-let show_full_path ()     = state.show_full_path
-
-let set_debug_show_bbox () = state.debug_show_bbox <- true
-let debug_show_bbox ()     = state.debug_show_bbox
-
-let set_debug_show_space () = state.debug_show_space <- true
-let debug_show_space ()     = state.debug_show_space
-
-let set_debug_show_block_bbox () = state.debug_show_block_bbox <- true
-let debug_show_block_bbox ()     = state.debug_show_block_bbox
-
-let set_debug_show_block_space () = state.debug_show_block_space <- true
-let debug_show_block_space ()     = state.debug_show_block_space
-
-let set_debug_show_overfull () = state.debug_show_overfull <- true
-let debug_show_overfull ()     = state.debug_show_overfull
-
-let set_text_mode lst = state.mode <- Some(lst)
-let get_mode () = state.mode
 let is_text_mode () =
-  match state.mode with
-  | Some(_) -> true
-  | None -> false
-
-let set_extra_config_paths lst = state.extra_config_paths <- Some(lst)
-let get_extra_config_paths () = state.extra_config_paths
-
-let set_no_default_config_paths () = state.no_default_config_paths <- true
-let get_no_default_config_paths () = state.no_default_config_paths
-
-let set_page_number_limit m = state.page_number_limit <- m
-let get_page_number_limit () = state.page_number_limit
+  match (get ()).output_mode with
+  | TextMode(_) -> true
+  | PdfMode     -> false

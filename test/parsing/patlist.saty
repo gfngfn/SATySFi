@@ -1,5 +1,10 @@
-let pat-test =
-   match a with
-  | [b] -> c
-  | [b; c] -> d
-  | [b; c;] -> d
+module Patlist = struct
+
+  val pat-test =
+    match a with
+    | [b] -> c
+    | [b, c] -> d
+    | [b, c,] -> d
+    end
+
+end

@@ -16,8 +16,13 @@
   menhirLib
   otfed
   uutf
+  uunf
+  uunf.string
+  uuseg
+  uuseg.string
   yojson-with-position
-  omd)
+  omd
+  ocamlgraph)
  (preprocess
   (pps ppx_deriving.show)))
 
