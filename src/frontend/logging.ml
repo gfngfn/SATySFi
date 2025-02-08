@@ -24,6 +24,16 @@ let begin_to_parse_file abspath_in =
   print_endline ("  parsing '" ^ (show_path abspath_in) ^ "' ...")
 
 
+let start_make_deps () = 
+  print_endline (" ---- ---- ---- ----");
+  print_endline ("  evaluating texts to make deps ...")
+
+
+let end_make_deps () = 
+  print_endline (" ---- ---- ---- ----");
+  print_endline ("  evaluation done.")
+
+
 let pass_type_check opt =
   match opt with
   | None ->

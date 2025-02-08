@@ -21,3 +21,5 @@ val get_xobject_dictionary : Pdf.t -> Pdf.pdfobject
 val get_tag : key -> string
 
 val get_color_space : key -> Pdf.pdfobject option
+
+val is_stub : key -> bool

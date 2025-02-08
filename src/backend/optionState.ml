@@ -18,6 +18,7 @@ type state = {
   mutable debug_show_block_bbox : bool;
   mutable debug_show_block_space : bool;
   mutable debug_show_overfull : bool;
+  mutable depmode : bool;
   mutable mode             : (string list) option;
   mutable extra_config_paths : string list option;
   mutable no_default_config_paths : bool;
@@ -38,6 +39,7 @@ let state = {
   debug_show_block_bbox = false;
   debug_show_block_space = false;
   debug_show_overfull = false;
+  depmode = false;
   mode             = None;
   extra_config_paths = None;
   no_default_config_paths = false;
@@ -84,6 +86,9 @@ let debug_show_block_space ()     = state.debug_show_block_space
 
 let set_debug_show_overfull () = state.debug_show_overfull <- true
 let debug_show_overfull ()     = state.debug_show_overfull
+
+let set_depmode () = state.depmode <- true
+let depmode ()     = state.depmode
 
 let set_text_mode lst = state.mode <- Some(lst)
 let get_mode () = state.mode
