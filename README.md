@@ -46,6 +46,14 @@ opam install satysfi satysfi-dist satyrographos
 satyrographos install
 ```
 
+## Install using Nix (for Linux users) (unofficial)
+
+Follow the instructions [here](https://nixos.org/nix/download.html) to install the Nix package manager.
+
+```sh
+$ nix-env -iA nixpkgs.satysfi
+```
+
 ## Install using OPAM
 
 ### Prerequisites
