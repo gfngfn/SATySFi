@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout tree
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # - name: Set SHELLOPTS=igncr on Windows
       #   if: runner.os == 'Windows'
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout tree
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set-up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout tree
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Set-up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
