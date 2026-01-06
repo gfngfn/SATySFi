@@ -28,7 +28,7 @@ sudo apt-get install build-essential git m4 unzip curl pkg-config
 sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
 
 # Mac の場合
-# 要 homebrew (https://brew.sh/index_ja に従いインストールして下さい)
+# 要 homebrew (https://brew.sh/ja/ に従いインストールして下さい)
 brew update
 brew install opam
 
