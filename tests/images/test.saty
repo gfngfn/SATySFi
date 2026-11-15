@@ -56,9 +56,9 @@ document (|
       PngSuite-2017jul19/basn0g08.png: PNG image data, 32 x 32, 8-bit grayscale, non-interlaced
       * (Unsupported by camlimages) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g16.png`);
       PngSuite-2017jul19/basn0g16.png: PNG image data, 32 x 32, 16-bit grayscale, non-interlaced
-      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn2c08.png`);
+      * (Unsupported by camlimages) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn2c08.png`);
       PngSuite-2017jul19/basn2c08.png: PNG image data, 32 x 32, 8-bit/color RGB, non-interlaced
-      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn2c16.png`);
+      * (Unsupported by camlimages) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn2c16.png`);
       PngSuite-2017jul19/basn2c16.png: PNG image data, 32 x 32, 16-bit/color RGB, non-interlaced
       * (Unsupported by camlimages) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn3p01.png`);
       PngSuite-2017jul19/basn3p01.png: PNG image data, 32 x 32, 1-bit colormap, non-interlaced
