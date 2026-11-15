@@ -29,7 +29,7 @@ jobs:
       #   run: echo "SHELLOPTS=igncr" >>"$GITHUB_ENV"
 
       - name: Restore fonts cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: fonts-cache
         with:
           path: lib-satysfi/dist/fonts
