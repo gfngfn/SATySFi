@@ -36,9 +36,9 @@
    (and
     (>= 5.0.1)
     (< 5.0.5)))
-  conf-libpng
   (camlpdf
    (= 2.3.1+satysfi))
+  conf-libpng
   (core_kernel
    (and
     (>= v0.15)
