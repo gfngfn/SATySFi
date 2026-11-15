@@ -42,19 +42,19 @@ document (|
     +p{
       Images from \href(`http://www.schaik.com/pngsuite/`){PngSuite}.
     }
+    % TODO: support all of the following:
     +listing {
       * \insert-image(0.5cm)(`PngSuite-2017jul19/basi0g01.png`);
       PngSuite-2017jul19/basi0g01.png: PNG image data, 32 x 32, 1-bit grayscale, interlaced
       * \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g01.png`);
       PngSuite-2017jul19/basn0g01.png: PNG image data, 32 x 32, 1-bit grayscale, non-interlaced
-      % TODO: support the following:
-      %* \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g02.png`);
-      %PngSuite-2017jul19/basn0g02.png: PNG image data, 32 x 32, 2-bit grayscale, non-interlaced
-      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g04.png`);
+      * (Unsupported by camlimages) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g02.png`);
+      PngSuite-2017jul19/basn0g02.png: PNG image data, 32 x 32, 2-bit grayscale, non-interlaced
+      * (Unsupported by camlimages) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g04.png`);
       PngSuite-2017jul19/basn0g04.png: PNG image data, 32 x 32, 4-bit grayscale, non-interlaced
-      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g08.png`);
+      * (Unsupported by camlimages) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g08.png`);
       PngSuite-2017jul19/basn0g08.png: PNG image data, 32 x 32, 8-bit grayscale, non-interlaced
-      * \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g16.png`);
+      * (Unsupported by camlimages) % \insert-image(0.5cm)(`PngSuite-2017jul19/basn0g16.png`);
       PngSuite-2017jul19/basn0g16.png: PNG image data, 32 x 32, 16-bit grayscale, non-interlaced
       * \insert-image(0.5cm)(`PngSuite-2017jul19/basn2c08.png`);
       PngSuite-2017jul19/basn2c08.png: PNG image data, 32 x 32, 8-bit/color RGB, non-interlaced
