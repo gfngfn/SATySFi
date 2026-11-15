@@ -12,11 +12,12 @@ let () =
   |> Option.value ~default:[]
   |> List.iter ~f:begin fun fn ->
     try
-      Out_channel.printf "\n;; %s\n" fn;
+      let basename = Filename.basename fn in
+      Out_channel.printf "\n;; %s\n" basename;
       In_channel.with_file fn
         ~f:(fun in_ch ->
             Lexing.from_channel in_ch
-            |> ParserInterface.process fn
+            |> ParserInterface.process basename
           )
       |> trd3
       |> [%derive.show: Types.untyped_abstract_tree]
