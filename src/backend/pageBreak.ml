@@ -702,22 +702,54 @@ let chop_single_column_with_insertion (pbinfo : page_break_info) (content_height
   chop_single_column pbinfo content_height (List.append pbvblst_inserted pbvblst)
 
 
+let is_valid_page_content_scheme ((paper_width, paper_height) : length * length) (pagecontsch : page_content_scheme) : bool =
+  let (xorg, yorg) = pagecontsch.page_content_origin in
+  (Length.zero <=% xorg && xorg <=% paper_width) &&
+  (Length.zero <=% yorg && yorg <=% paper_height) &&
+  (Length.zero <% pagecontsch.page_content_height)
+
+
+let warn_invalid_page_content_scheme (pbinfo : page_break_info) (pagecontsch : page_content_scheme) ((paper_width, paper_height) : length * length) : unit =
+  let (xorg, yorg) = pagecontsch.page_content_origin in
+  let pageno = pbinfo.current_page_number in
+  Printf.printf
+    "  [Warning] invalid page-content on page %d: text-origin=(%.2fpt, %.2fpt), text-height=%.2fpt, paper-size=(%.2fpt, %.2fpt). main texts are skipped on this page.\n"
+    pageno
+    (Length.to_pdf_point xorg) (Length.to_pdf_point yorg)
+    (Length.to_pdf_point pagecontsch.page_content_height)
+    (Length.to_pdf_point paper_width) (Length.to_pdf_point paper_height)
+
+
 let main (absname_out : abs_path) (pagesize : page_size) (columnhookf : column_hook_func) (pagecontf : page_content_scheme_func) (pagepartsf : page_parts_scheme_func) (vblst : vert_box list) : HandlePdf.t =
 
   let pdfinit = HandlePdf.create_empty_pdf absname_out in
 
+  let page_number_limit = OptionState.get_page_number_limit () in
+  let paper_size = HandlePdf.get_paper_width_and_height pagesize in
+
   let rec aux pageno (pdfacc : HandlePdf.t) pbvblst =
-    let pbinfo = { current_page_number = pageno; } in
-    let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
-    let (evvblstpage, footnote, restopt) =
-      chop_single_column_with_insertion pbinfo pagecontsch.page_content_height columnhookf pbvblst
-    in
-    let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
-    let page = HandlePdf.add_column_to_page page Length.zero evvblstpage footnote in
-    let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
-    match restopt with
-    | None       -> pdfaccnew
-    | Some(rest) -> aux (pageno + 1) pdfaccnew rest
+    if pageno > page_number_limit then
+      raise (PageNumberLimitExceeded(page_number_limit))
+    else
+      let pbinfo = { current_page_number = pageno; } in
+      let pagecontsch = pagecontf pbinfo in  (* -- invokes the page scheme function -- *)
+      if is_valid_page_content_scheme paper_size pagecontsch then
+        let (evvblstpage, footnote, restopt) =
+          chop_single_column_with_insertion pbinfo pagecontsch.page_content_height columnhookf pbvblst
+        in
+        let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
+        let page = HandlePdf.add_column_to_page page Length.zero evvblstpage footnote in
+        let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
+        match restopt with
+        | None       -> pdfaccnew
+        | Some(rest) -> aux (pageno + 1) pdfaccnew rest
+      else
+        let () = warn_invalid_page_content_scheme pbinfo pagecontsch paper_size in
+        let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
+        let pdfaccnew = pdfacc |> HandlePdf.write_page page pagepartsf in
+        match pbvblst with
+        | []     -> pdfaccnew
+        | _ :: _ -> aux (pageno + 1) pdfaccnew pbvblst
   in
   let pbvblst = normalize vblst in
   aux 1 pdfinit pbvblst
@@ -728,6 +760,7 @@ let main_multicolumn (absname_out : abs_path) (pagesize : page_size) (origin_shi
   let pdfinit = HandlePdf.create_empty_pdf absname_out in
 
   let page_number_limit = OptionState.get_page_number_limit () in
+  let paper_size = HandlePdf.get_paper_width_and_height pagesize in
 
   let rec iter_on_column
       (pbinfo : page_break_info) (content_height : length)
@@ -767,15 +800,23 @@ let main_multicolumn (absname_out : abs_path) (pagesize : page_size) (origin_shi
     else
       let pbinfo = { current_page_number = pageno; } in
       let pagecontsch = pagecontf pbinfo in  (* Invokes the page scheme function. *)
-      let content_height = pagecontsch.page_content_height in
+      if is_valid_page_content_scheme paper_size pagecontsch then
+        let content_height = pagecontsch.page_content_height in
 
-      (* Creates an empty page and iteratively adds columns to it. *)
-      let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
-      let (page, rest) = iter_on_column pbinfo content_height page pbvbs origin_shifts in
-      let pdfacc = pdfacc |> HandlePdf.write_page page pagepartsf in
-      match rest with
-      | []     -> pdfacc
-      | _ :: _ -> iter_on_page (pageno + 1) pdfacc rest
+        (* Creates an empty page and iteratively adds columns to it. *)
+        let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
+        let (page, rest) = iter_on_column pbinfo content_height page pbvbs origin_shifts in
+        let pdfacc = pdfacc |> HandlePdf.write_page page pagepartsf in
+        match rest with
+        | []     -> pdfacc
+        | _ :: _ -> iter_on_page (pageno + 1) pdfacc rest
+      else
+        let () = warn_invalid_page_content_scheme pbinfo pagecontsch paper_size in
+        let page = HandlePdf.make_empty_page pagesize pbinfo pagecontsch in
+        let pdfacc = pdfacc |> HandlePdf.write_page page pagepartsf in
+        match pbvbs with
+        | []     -> pdfacc
+        | _ :: _ -> iter_on_page (pageno + 1) pdfacc pbvbs
   in
   let pbvblst = normalize vblst in
   iter_on_page 1 pdfinit pbvblst

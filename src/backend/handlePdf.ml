@@ -367,6 +367,12 @@ let get_paper_height (paper : Pdfpaper.t) : length =
   Length.of_pdf_point pdfpt
 
 
+let get_paper_width (paper : Pdfpaper.t) : length =
+  let dpi = 300. in  (* temporary; should be variable *)
+  let pdfpt = Pdfunits.convert dpi (Pdfpaper.unit paper) Pdfunits.PdfPoint (Pdfpaper.width paper) in
+  Length.of_pdf_point pdfpt
+
+
 let opacc_of_body_and_footnote
       (txtlen : length)  (* -- for option `--debug-show-block-bbox` -- *)
       (pbinfo : page_break_info)
@@ -414,6 +420,11 @@ let get_pdf_paper  (pagesize : page_size) : Pdfpaper.t =
   | USLetter               -> Pdfpaper.usletter
   | USLegal                -> Pdfpaper.uslegal
   | UserDefinedPaper(w, h) -> Pdfpaper.make Pdfunits.PdfPoint (Length.to_pdf_point w) (Length.to_pdf_point h)
+
+
+let get_paper_width_and_height (pagesize : page_size) : length * length =
+  let paper = get_pdf_paper pagesize in
+  (get_paper_width paper, get_paper_height paper)
 
 
 let make_empty_page
