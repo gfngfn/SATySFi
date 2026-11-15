@@ -1,6 +1,6 @@
 (lang dune 3.17)
 
-(using menhir 2.1)
+(using menhir 3.0)
 
 (formatting
  (enabled_for dune))
@@ -38,10 +38,11 @@
     (< 5.0.5)))
   (camlpdf
    (= 2.3.1+satysfi))
+  conf-libpng
   (core_kernel
    (and
     (>= v0.15)
-    (< v0.18)))
+    (< v0.16)))
   (cppo
    (and
     (>= 1.6.4)
@@ -57,7 +58,7 @@
     (< 2.0)))
   (otfed
    (and
-    (>= 0.3.2)
+    (>= 0.3.4)
     (< 0.4)))
   (ppx_deriving
    (and

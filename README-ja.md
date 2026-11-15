@@ -1,6 +1,6 @@
 ![logo1](https://raw.githubusercontent.com/wiki/gfngfn/SATySFi/img/satysfi-logo.png)
 
-[![Build Status](https://github.com/gfngfn/SATySFi/workflows/CI/badge.svg?branch=master)](https://github.com/gfngfn/SATySFi/actions?query=workflow%3ACI)
+[![Build Status](https://github.com/gfngfn/SATySFi/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/gfngfn/SATySFi/actions?query=workflow%3ACI)
 
 [English README is here](https://github.com/gfngfn/SATySFi/blob/master/README.md)
 
@@ -28,7 +28,7 @@ sudo apt-get install build-essential git m4 unzip curl pkg-config
 sh <(curl -sL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)
 
 # Mac の場合
-# 要 homebrew (https://brew.sh/index_ja に従いインストールして下さい)
+# 要 homebrew (https://brew.sh/ja/ に従いインストールして下さい)
 brew update
 brew install opam
 
