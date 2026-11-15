@@ -36,13 +36,14 @@
    (and
     (>= 5.0.1)
     (< 5.0.5)))
+  conf-libpng
   (camlpdf
    (= 2.3.1+satysfi))
   conf-libpng
   (core_kernel
    (and
     (>= v0.15)
-    (< v0.18)))
+    (< v0.16)))
   (cppo
    (and
     (>= 1.6.4)
@@ -58,7 +59,7 @@
     (< 2.0)))
   (otfed
    (and
-    (>= 0.3.2)
+    (>= 0.3.4)
     (< 0.4)))
   (ppx_deriving
    (and
